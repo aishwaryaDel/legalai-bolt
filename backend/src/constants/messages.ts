@@ -33,6 +33,41 @@ export const USE_CASE_MESSAGES = {
   DELETE_ERROR: 'Failed to delete use case',
 };
 
+export const ROLE_MESSAGES = {
+  ID_REQUIRED: 'Role ID is required',
+  NOT_FOUND: 'Role not found',
+  FETCH_ERROR: 'Failed to fetch role',
+  FETCH_ALL_ERROR: 'Failed to fetch roles',
+  CREATED_SUCCESS: 'Role created successfully',
+  CREATE_ERROR: 'Failed to create role',
+  UPDATED_SUCCESS: 'Role updated successfully',
+  UPDATE_ERROR: 'Failed to update role',
+  NO_UPDATE_DATA: 'No update data provided',
+  DELETED_SUCCESS: 'Role deleted successfully',
+  DELETE_ERROR: 'Failed to delete role',
+  NAME_REQUIRED: 'Role name is required',
+  ALREADY_EXISTS: 'Role with this name already exists',
+};
+
+export const USER_ROLE_MESSAGES = {
+  ID_REQUIRED: 'User role ID is required',
+  NOT_FOUND: 'User role assignment not found',
+  FETCH_ERROR: 'Failed to fetch user role',
+  FETCH_ALL_ERROR: 'Failed to fetch user roles',
+  CREATED_SUCCESS: 'Role assigned to user successfully',
+  CREATE_ERROR: 'Failed to assign role to user',
+  UPDATED_SUCCESS: 'User role updated successfully',
+  UPDATE_ERROR: 'Failed to update user role',
+  NO_UPDATE_DATA: 'No update data provided',
+  DELETED_SUCCESS: 'Role removed from user successfully',
+  DELETE_ERROR: 'Failed to remove role from user',
+  USER_ID_REQUIRED: 'User ID is required',
+  ROLE_ID_REQUIRED: 'Role ID is required',
+  ALREADY_ASSIGNED: 'User already has this role assigned',
+  USER_NOT_FOUND: 'User not found',
+  ROLE_NOT_FOUND: 'Role not found',
+};
+
 export const VALIDATION_MESSAGES = {
   TITLE_REQUIRED: 'Title is required',
   SHORT_DESCRIPTION_REQUIRED: 'Short description is required',
