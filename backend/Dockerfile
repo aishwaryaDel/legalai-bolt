@@ -42,8 +42,8 @@ RUN npm install --omit=dev
 COPY --from=build /app/dist ./dist
 
 # Port, auf dem der Server laufen wird
-ENV PORT=3001
-EXPOSE 3001
+ENV PORT=5001
+EXPOSE 5001
 
 # Startkommando für die API
 CMD ["node", "dist/src/server.js"]
