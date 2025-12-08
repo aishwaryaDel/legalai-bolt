@@ -1,0 +1,48 @@
+name: Backend Deployment Trigger
+
+on:
+  push:
+    branches:
+      - dev
+      - prod
+      - main
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+
+jobs:
+
+  # ---------------------- SETUP ----------------------
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Environment Details
+        run: |
+          echo "🚀 Backend Docker Build & Push Workflow"
+          echo "Branch: ${{ github.ref }}"
+
+  # ---------------------- DEV ----------------------
+  build-and-push-dev:
+    name: Dev
+    needs: setup
+    uses: Central-DIT/tesa-app-deploy/.github/workflows/Backend_docker_deploy.yml@main
+    with:
+      environment: "dev"
+      image_name: "legalai-api-dev"
+      app_info: ${{ vars.APP_INFO_DEV }}  # App info from GitHub variable
+    secrets:
+      azure_creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+      docker_env: ${{ secrets.DOCKER_ENV_DEV }} 
+  
+  # ---------------------- PROD ----------------------
+  build-and-push-prod:
+    name: Prod
+    needs: setup
+    uses: Central-DIT/tesa-app-deploy/.github/workflows/Backend_docker_deploy.yml@main
+    with:
+      environment: "prod"
+      image_name: "legalai-api-prd"
+      app_info: ${{ vars.APP_INFO_PRD }}  # App info from GitHub variable
+    secrets:
+      azure_creds: ${{ secrets.AZURE_CREDENTIALS_PRD }}
+      docker_env: ${{ secrets.DOCKER_ENV_PRD }} 
