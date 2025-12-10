@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { FileText, ChevronDown, ChevronUp, CheckCircle, AlertTriangle, TrendingUp, Eye } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 
 interface ClauseOption {
   id: string;

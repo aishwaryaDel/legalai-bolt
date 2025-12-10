@@ -3,7 +3,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useColors } from '../lib/colors';
 import { useAuth } from '../contexts/AuthContext';
 import { aiModels } from '../lib/config';
-import { supabase } from '../lib/supabase';
 import { securityService } from '../lib/securityService';
 import {
   Settings, Database, Key, Users, Shield, DollarSign, FileText,

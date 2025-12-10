@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useLocale } from '../contexts/LocaleContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { Upload, CheckCircle, Loader, FileText, Send } from 'lucide-react';
 
 export function Intake() {

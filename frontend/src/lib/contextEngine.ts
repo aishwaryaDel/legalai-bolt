@@ -1,4 +1,3 @@
-import { supabase } from './supabase';
 import { legalKnowledgeService } from './legalKnowledgeService';
 import { feedbackService } from './feedbackService';
 
@@ -42,50 +41,16 @@ export interface ContextualPrompt {
 
 class ContextEngine {
   async getUserContext(userId: string): Promise<UserContext | null> {
-    try {
-      const { data: preferences, error: prefError } = await supabase
-        .from('user_preferences')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (prefError) throw prefError;
-
-      const { data: userData, error: userError } = await supabase
-        .from('user_roles')
-        .select('roles(name)')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (userError) throw userError;
-
-      const role = (userData as any)?.roles?.name || 'user';
-
-      if (!preferences) {
-        return {
-          user_id: userId,
-          jurisdiction: 'DACH',
-          language: 'de',
-          role,
-          industries: [],
-          contract_types: [],
-          expertise_level: 'intermediate',
-        };
-      }
-
-      return {
-        user_id: userId,
-        jurisdiction: preferences.default_jurisdiction,
-        language: preferences.default_language,
-        role,
-        industries: preferences.industries || [],
-        contract_types: preferences.contract_types || [],
-        expertise_level: 'intermediate',
-      };
-    } catch (error) {
-      console.error('Error fetching user context:', error);
-      return null;
-    }
+    console.warn('ContextEngine: Backend API integration pending');
+    return {
+      user_id: userId,
+      jurisdiction: 'DACH',
+      language: 'de',
+      role: 'user',
+      industries: [],
+      contract_types: [],
+      expertise_level: 'intermediate',
+    };
   }
 
   async buildContextualPrompt(
@@ -99,27 +64,20 @@ class ContextEngine {
 
     const precedents = await this.findRelevantPrecedents(queryContext);
 
-    const enhancedUserPrompt = await this.enhanceUserPrompt(
-      userQuery,
-      queryContext,
-      relevantSources,
-      precedents
-    );
-
-    const suggestedModels = this.selectOptimalModels(userContext, queryContext);
+    const suggestedModels = this.selectModels(queryContext.query_type, userContext.expertise_level);
 
     const temperature = this.determineTemperature(queryContext.query_type);
 
     return {
       system_prompt: systemPrompt,
-      user_prompt: enhancedUserPrompt,
+      user_prompt: userQuery,
       context_metadata: {
         jurisdiction: queryContext.jurisdiction,
         contract_type: queryContext.contract_type,
         user_role: userContext.role,
         query_type: queryContext.query_type,
-        relevant_sources: relevantSources.map(s => s.reference_number),
-        precedents: precedents.map(p => p.id!),
+        relevant_sources: relevantSources,
+        precedents: precedents,
       },
       suggested_models: suggestedModels,
       temperature,
@@ -130,283 +88,133 @@ class ContextEngine {
     userContext: UserContext,
     queryContext: QueryContext
   ): Promise<string> {
-    const rolePrompts: Record<string, string> = {
-      admin: 'You are an expert legal AI assistant supporting administrative and strategic decisions.',
-      legal_counsel: 'You are an expert legal AI assistant supporting qualified legal professionals with deep legal analysis.',
-      user: 'You are a helpful legal AI assistant providing clear guidance to business users.',
-      viewer: 'You are a legal AI assistant providing informational support.',
-    };
-
-    const queryTypePrompts: Record<string, string> = {
-      drafting: 'Focus on generating legally sound, comprehensive contract language.',
-      review: 'Provide detailed analysis of contract terms, identifying risks, issues, and improvements.',
-      analysis: 'Deliver in-depth legal analysis with citations and multi-jurisdictional considerations.',
-      research: 'Provide thorough legal research with comprehensive citations and case law references.',
-      negotiation: 'Offer strategic negotiation guidance, alternative clauses, and risk assessments.',
-      general: 'Provide helpful, accurate legal information and guidance.',
-    };
-
+    const roleDescription = this.getRoleDescription(userContext.role);
+    const expertiseAdjustment = this.getExpertiseAdjustment(userContext.expertise_level);
     const jurisdictionContext = this.getJurisdictionContext(queryContext.jurisdiction);
 
-    let systemPrompt = `${rolePrompts[userContext.role] || rolePrompts.user}\n\n`;
-    systemPrompt += `Jurisdiction: ${queryContext.jurisdiction} - ${jurisdictionContext}\n\n`;
-    systemPrompt += `${queryTypePrompts[queryContext.query_type]}\n\n`;
+    return `You are an AI legal assistant helping a ${roleDescription} with ${queryContext.query_type} tasks.
 
-    if (queryContext.contract_type) {
-      systemPrompt += `Contract Type: ${queryContext.contract_type}\n\n`;
-    }
+${jurisdictionContext}
 
-    if (queryContext.industry) {
-      systemPrompt += `Industry: ${queryContext.industry}\n\n`;
-    }
+${expertiseAdjustment}
 
-    systemPrompt += `Important Guidelines:\n`;
-    systemPrompt += `- Always cite legal sources with specific references (e.g., BGB §123, GDPR Art. 6)\n`;
-    systemPrompt += `- Clearly state when you're uncertain or when legal counsel should be consulted\n`;
-    systemPrompt += `- Consider jurisdiction-specific requirements and best practices\n`;
-    systemPrompt += `- Provide practical, actionable recommendations\n`;
-    systemPrompt += `- Flag high-risk terms and potential compliance issues\n`;
+Contract Type: ${queryContext.contract_type || 'General'}
+Industry: ${queryContext.industry || 'Not specified'}
 
-    if (userContext.expertise_level === 'beginner') {
-      systemPrompt += `- Explain legal terms and concepts in clear, accessible language\n`;
-      systemPrompt += `- Provide context and rationale for recommendations\n`;
-    }
+Always provide accurate, jurisdiction-specific advice based on current law and best practices.
+Include citations and references where appropriate.
+Clearly distinguish between legal requirements and best practices.
+Flag any high-risk terms or clauses that require human legal review.`;
+  }
 
-    return systemPrompt;
+  private getRoleDescription(role: string): string {
+    const roles: Record<string, string> = {
+      'admin': 'platform administrator',
+      'legal_admin': 'legal department administrator',
+      'lawyer': 'legal professional',
+      'paralegal': 'paralegal',
+      'business_user': 'business user',
+      'user': 'general user',
+    };
+    return roles[role] || 'user';
+  }
+
+  private getExpertiseAdjustment(level: string): string {
+    const adjustments: Record<string, string> = {
+      'beginner': 'Provide detailed explanations of legal terms and concepts. Use plain language where possible.',
+      'intermediate': 'Balance technical accuracy with clear explanations. Assume basic legal knowledge.',
+      'expert': 'Use precise legal terminology. Focus on nuanced analysis and advanced considerations.',
+    };
+    return adjustments[level] || adjustments['intermediate'];
   }
 
   private getJurisdictionContext(jurisdiction: string): string {
     const contexts: Record<string, string> = {
-      DACH: 'Apply German (BGB, HGB), Austrian (ABGB), and Swiss (OR) legal principles. Consider strict data protection (GDPR/BDSG), strong employee protection, and formal contract requirements.',
-      EU: 'Apply EU directives and regulations, especially GDPR. Consider cross-border implications and harmonized EU law. Be aware of member state variations.',
-      US: 'Apply common law principles, UCC for commercial transactions, and state-specific requirements. Consider at-will employment, extensive indemnification clauses.',
-      GLOBAL: 'Consider international commercial law, UNIDROIT principles, and CISG for international sales. Be aware of jurisdictional variations.',
+      'DACH': 'Focus on German, Austrian, and Swiss law. Reference BGB, OR (Swiss), and ABGB (Austria) as appropriate.',
+      'EU': 'Apply EU law including directives and regulations. Consider GDPR and other EU-wide legislation.',
+      'UK': 'Apply UK law post-Brexit. Reference relevant Acts of Parliament and case law.',
+      'US': 'Apply US federal and state law. Specify which jurisdiction when relevant.',
+    };
+    return contexts[jurisdiction] || `Focus on ${jurisdiction} law and regulations.`;
+  }
+
+  private async findRelevantLegalSources(queryContext: QueryContext): Promise<string[]> {
+    console.warn('ContextEngine: Backend API integration pending');
+    return [];
+  }
+
+  private async findRelevantPrecedents(queryContext: QueryContext): Promise<string[]> {
+    console.warn('ContextEngine: Backend API integration pending');
+    return [];
+  }
+
+  private selectModels(queryType: string, expertiseLevel: string): string[] {
+    const modelMap: Record<string, string[]> = {
+      'drafting': ['gpt-4', 'claude-3-opus'],
+      'review': ['gpt-4-turbo', 'claude-3-sonnet'],
+      'analysis': ['gpt-4', 'claude-3-opus'],
+      'research': ['gpt-4-turbo', 'claude-3-sonnet'],
+      'negotiation': ['gpt-4', 'claude-3-opus'],
+      'general': ['gpt-3.5-turbo', 'claude-3-haiku'],
     };
 
-    return contexts[jurisdiction] || contexts.GLOBAL;
-  }
-
-  private async findRelevantLegalSources(queryContext: QueryContext): Promise<any[]> {
-    if (!queryContext.contract_type) {
-      return [];
-    }
-
-    const keywords = this.extractLegalKeywords(queryContext);
-
-    const sources = await legalKnowledgeService.searchLegalSources({
-      jurisdiction: queryContext.jurisdiction,
-      keywords: keywords.join(' '),
-      valid_as_of: new Date().toISOString().split('T')[0],
-    });
-
-    return sources.slice(0, 5);
-  }
-
-  private extractLegalKeywords(queryContext: QueryContext): string[] {
-    const contractTypeKeywords: Record<string, string[]> = {
-      NDA: ['confidentiality', 'non-disclosure', 'trade secret', 'proprietary information'],
-      MSA: ['service agreement', 'liability', 'indemnification', 'termination'],
-      SOW: ['deliverables', 'scope', 'acceptance', 'milestones'],
-      EMPLOYMENT: ['employment', 'termination', 'compensation', 'benefits'],
-      LICENSE: ['intellectual property', 'license', 'royalty', 'usage rights'],
-    };
-
-    return contractTypeKeywords[queryContext.contract_type || ''] || [];
-  }
-
-  private async findRelevantPrecedents(queryContext: QueryContext): Promise<any[]> {
-    try {
-      if (!queryContext.contract_id) {
-        return [];
-      }
-
-      const { data: currentContract } = await supabase
-        .from('contracts')
-        .select('contract_type, jurisdiction')
-        .eq('id', queryContext.contract_id)
-        .maybeSingle();
-
-      if (!currentContract) return [];
-
-      const { data: precedents, error } = await supabase
-        .from('precedent_cases')
-        .select('*, contracts(contract_type, jurisdiction)')
-        .eq('outcome', 'success')
-        .limit(5);
-
-      if (error) throw error;
-
-      return precedents || [];
-    } catch (error) {
-      console.error('Error finding relevant precedents:', error);
-      return [];
-    }
-  }
-
-  private async enhanceUserPrompt(
-    userQuery: string,
-    queryContext: QueryContext,
-    sources: any[],
-    precedents: any[]
-  ): Promise<string> {
-    let enhancedPrompt = userQuery;
-
-    if (sources.length > 0) {
-      enhancedPrompt += '\n\nRelevant Legal Sources:\n';
-      sources.forEach((source, idx) => {
-        enhancedPrompt += `${idx + 1}. ${source.reference_number}: ${source.title}\n`;
-        if (source.summary) {
-          enhancedPrompt += `   Summary: ${source.summary.substring(0, 200)}...\n`;
-        }
-      });
-    }
-
-    if (precedents.length > 0) {
-      enhancedPrompt += '\n\nRelevant Internal Precedents:\n';
-      precedents.forEach((precedent, idx) => {
-        enhancedPrompt += `${idx + 1}. ${precedent.case_summary.substring(0, 150)}...\n`;
-        if (precedent.lessons_learned) {
-          enhancedPrompt += `   Lesson: ${precedent.lessons_learned.substring(0, 100)}...\n`;
-        }
-      });
-    }
-
-    if (queryContext.relevant_clauses && queryContext.relevant_clauses.length > 0) {
-      enhancedPrompt += '\n\nRelevant Contract Clauses:\n';
-      enhancedPrompt += queryContext.relevant_clauses.join(', ') + '\n';
-    }
-
-    return enhancedPrompt;
-  }
-
-  private selectOptimalModels(
-    userContext: UserContext,
-    queryContext: QueryContext
-  ): string[] {
-    const modelPreferences: Record<string, string[]> = {
-      drafting: ['gpt-5-turbo', 'gpt-5', 'claude-3-opus-20240229'],
-      review: ['gpt-5', 'gpt-5-turbo', 'gpt-4'],
-      analysis: ['gpt-5', 'claude-3-opus-20240229', 'gpt-5-turbo'],
-      research: ['gpt-5', 'claude-3-opus-20240229', 'gpt-4-turbo'],
-      negotiation: ['gpt-5-turbo', 'gpt-5', 'claude-3-sonnet-20240229'],
-      general: ['gpt-5-turbo', 'gpt-4o-mini', 'gpt-3.5-turbo'],
-    };
-
-    let models = modelPreferences[queryContext.query_type] || modelPreferences.general;
-
-    if (userContext.jurisdiction === 'DACH' && userContext.language === 'de') {
-      models = ['claude-3-opus-20240229', 'gpt-5', 'gpt-5-turbo'];
-    }
-
-    return models;
+    return modelMap[queryType] || modelMap['general'];
   }
 
   private determineTemperature(queryType: string): number {
     const temperatureMap: Record<string, number> = {
-      drafting: 0.5,
-      review: 0.3,
-      analysis: 0.4,
-      research: 0.3,
-      negotiation: 0.6,
-      general: 0.7,
+      'drafting': 0.3,
+      'review': 0.2,
+      'analysis': 0.4,
+      'research': 0.3,
+      'negotiation': 0.5,
+      'general': 0.7,
     };
 
-    return temperatureMap[queryType] || 0.7;
+    return temperatureMap[queryType] || 0.5;
   }
 
-  async updateUserPreferencesFromUsage(
-    userId: string,
-    queryContext: QueryContext
-  ): Promise<void> {
-    try {
-      const { data: existing, error: fetchError } = await supabase
-        .from('user_preferences')
-        .select('contract_types, industries')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (fetchError) throw fetchError;
-
-      const contractTypes = new Set(existing?.contract_types || []);
-      const industries = new Set(existing?.industries || []);
-
-      if (queryContext.contract_type) {
-        contractTypes.add(queryContext.contract_type);
-      }
-
-      if (queryContext.industry) {
-        industries.add(queryContext.industry);
-      }
-
-      if (existing) {
-        await supabase
-          .from('user_preferences')
-          .update({
-            contract_types: Array.from(contractTypes),
-            industries: Array.from(industries),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', userId);
-      } else {
-        await supabase
-          .from('user_preferences')
-          .insert({
-            user_id: userId,
-            contract_types: Array.from(contractTypes),
-            industries: Array.from(industries),
-          });
-      }
-    } catch (error) {
-      console.error('Error updating user preferences:', error);
-    }
-  }
-
-  async generateNegotiationStrategy(
-    contractId: string,
-    clauseType: string,
+  async enhanceQuery(
+    userQuery: string,
+    queryContext: QueryContext,
     userContext: UserContext
-  ): Promise<{
-    current_position: string;
-    alternatives: Array<{ text: string; risk: string; rationale: string }>;
-    negotiation_tips: string[];
-    fallback_positions: string[];
-  }> {
-    try {
-      const suggestions = await legalKnowledgeService.getClauseSuggestions({
-        clause_type: clauseType,
-        jurisdiction: userContext.jurisdiction,
-      });
+  ): Promise<string> {
+    let enhancedQuery = userQuery;
 
-      const alternatives = suggestions.slice(0, 3).map(s => ({
-        text: s.clause_text,
-        risk: s.risk_level,
-        rationale: s.negotiation_notes || 'Standard clause with proven track record',
-      }));
-
-      return {
-        current_position: 'Current clause requires review',
-        alternatives,
-        negotiation_tips: [
-          'Start with your ideal position but be prepared to compromise',
-          'Focus on business objectives rather than legal technicalities',
-          'Consider the long-term relationship with the counterparty',
-          'Document all agreed changes in writing',
-        ],
-        fallback_positions: [
-          'Accept with risk mitigation measures',
-          'Request additional protective clauses',
-          'Limit scope or duration',
-        ],
-      };
-    } catch (error) {
-      console.error('Error generating negotiation strategy:', error);
-      return {
-        current_position: 'Unable to analyze',
-        alternatives: [],
-        negotiation_tips: [],
-        fallback_positions: [],
-      };
+    if (!userQuery.toLowerCase().includes(queryContext.jurisdiction.toLowerCase())) {
+      enhancedQuery += `\n\nJurisdiction: ${queryContext.jurisdiction}`;
     }
+
+    if (queryContext.contract_type && !userQuery.toLowerCase().includes(queryContext.contract_type.toLowerCase())) {
+      enhancedQuery += `\nContract Type: ${queryContext.contract_type}`;
+    }
+
+    if (queryContext.industry) {
+      enhancedQuery += `\nIndustry Context: ${queryContext.industry}`;
+    }
+
+    return enhancedQuery;
+  }
+
+  async recordQueryContext(
+    conversationId: string,
+    queryContext: QueryContext,
+    userContext: UserContext
+  ): Promise<void> {
+    console.warn('ContextEngine: Backend API integration pending');
+  }
+
+  async getHistoricalContext(userId: string, queryType: string): Promise<{
+    similar_queries: number;
+    average_satisfaction: number;
+    common_followups: string[];
+  }> {
+    console.warn('ContextEngine: Backend API integration pending');
+    return {
+      similar_queries: 0,
+      average_satisfaction: 0,
+      common_followups: [],
+    };
   }
 }
 

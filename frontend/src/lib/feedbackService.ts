@@ -1,5 +1,3 @@
-import { supabase } from './supabase';
-
 export interface AIFeedback {
   id?: string;
   conversation_id: string;
@@ -52,41 +50,13 @@ export interface ModelPerformanceMetrics {
 
 class FeedbackService {
   async submitFeedback(feedback: AIFeedback): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase
-        .from('ai_feedback')
-        .insert({
-          conversation_id: feedback.conversation_id,
-          message_id: feedback.message_id,
-          user_id: feedback.user_id,
-          rating: feedback.rating,
-          feedback_type: feedback.feedback_type,
-          feedback_text: feedback.feedback_text,
-          context_metadata: feedback.context_metadata || {},
-        });
-
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      return { success: false, error: (error as Error).message };
-    }
+    console.warn('FeedbackService: Backend API integration pending');
+    return { success: false, error: 'Backend API integration pending' };
   }
 
   async getFeedbackForMessage(messageId: string): Promise<AIFeedback[]> {
-    try {
-      const { data, error } = await supabase
-        .from('ai_feedback')
-        .select('*')
-        .eq('message_id', messageId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching feedback:', error);
-      return [];
-    }
+    console.warn('FeedbackService: Backend API integration pending');
+    return [];
   }
 
   async getUserFeedbackStats(userId: string): Promise<{
@@ -94,121 +64,22 @@ class FeedbackService {
     average_rating: number;
     feedback_by_type: Record<string, number>;
   }> {
-    try {
-      const { data, error } = await supabase
-        .from('ai_feedback')
-        .select('rating, feedback_type')
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      if (!data || data.length === 0) {
-        return {
-          total_feedback: 0,
-          average_rating: 0,
-          feedback_by_type: {},
-        };
-      }
-
-      const feedbackByType: Record<string, number> = {};
-      let totalRating = 0;
-
-      data.forEach((item) => {
-        feedbackByType[item.feedback_type] = (feedbackByType[item.feedback_type] || 0) + 1;
-        totalRating += item.rating > 0 ? item.rating : 0;
-      });
-
-      return {
-        total_feedback: data.length,
-        average_rating: totalRating / data.length,
-        feedback_by_type: feedbackByType,
-      };
-    } catch (error) {
-      console.error('Error fetching user feedback stats:', error);
-      return {
-        total_feedback: 0,
-        average_rating: 0,
-        feedback_by_type: {},
-      };
-    }
+    console.warn('FeedbackService: Backend API integration pending');
+    return {
+      total_feedback: 0,
+      average_rating: 0,
+      feedback_by_type: {},
+    };
   }
 
   async logAIResponse(log: AIResponseLog): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase
-        .from('ai_responses_log')
-        .insert({
-          conversation_id: log.conversation_id,
-          message_id: log.message_id,
-          model_version_id: log.model_version_id,
-          prompt_tokens: log.prompt_tokens,
-          completion_tokens: log.completion_tokens,
-          response_time_ms: log.response_time_ms,
-          confidence_score: log.confidence_score,
-          citations: log.citations || [],
-          hallucination_flags: log.hallucination_flags || [],
-        });
-
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      console.error('Error logging AI response:', error);
-      return { success: false, error: (error as Error).message };
-    }
+    console.warn('FeedbackService: Backend API integration pending');
+    return { success: false, error: 'Backend API integration pending' };
   }
 
   async getModelPerformanceMetrics(modelId: string, days: number = 30): Promise<ModelPerformanceMetrics | null> {
-    try {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - days);
-
-      const { data: feedbackData, error: feedbackError } = await supabase
-        .from('ai_feedback')
-        .select('rating, context_metadata')
-        .gte('created_at', cutoffDate.toISOString());
-
-      if (feedbackError) throw feedbackError;
-
-      const { data: responseData, error: responseError } = await supabase
-        .from('ai_responses_log')
-        .select('prompt_tokens, completion_tokens, response_time_ms, hallucination_flags, confidence_score')
-        .gte('created_at', cutoffDate.toISOString());
-
-      if (responseError) throw responseError;
-
-      if (!feedbackData || feedbackData.length === 0 || !responseData || responseData.length === 0) {
-        return null;
-      }
-
-      const totalFeedback = feedbackData.length;
-      const averageRating = feedbackData.reduce((sum, item) => sum + (item.rating > 0 ? item.rating : 0), 0) / totalFeedback;
-
-      const hallucinationCount = responseData.filter(item => item.hallucination_flags && item.hallucination_flags.length > 0).length;
-      const hallucinationRate = (hallucinationCount / responseData.length) * 100;
-
-      const averageResponseTime = responseData.reduce((sum, item) => sum + item.response_time_ms, 0) / responseData.length;
-
-      const totalTokens = responseData.reduce((sum, item) => sum + item.prompt_tokens + item.completion_tokens, 0);
-      const tokenEfficiency = totalTokens / responseData.length;
-
-      const averageConfidence = responseData
-        .filter(item => item.confidence_score !== null && item.confidence_score !== undefined)
-        .reduce((sum, item) => sum + (item.confidence_score || 0), 0) / responseData.length;
-
-      return {
-        model_id: modelId,
-        version: 'latest',
-        average_rating: averageRating,
-        total_feedback_count: totalFeedback,
-        accuracy_score: averageConfidence * 100,
-        hallucination_rate: hallucinationRate,
-        average_response_time: averageResponseTime,
-        token_efficiency: tokenEfficiency,
-      };
-    } catch (error) {
-      console.error('Error fetching model performance metrics:', error);
-      return null;
-    }
+    console.warn('FeedbackService: Backend API integration pending');
+    return null;
   }
 
   async detectHallucinations(responseText: string, citations: any[]): Promise<Array<{
@@ -218,7 +89,7 @@ class FeedbackService {
   }>> {
     const flags: Array<{ type: string; severity: string; description: string }> = [];
 
-    if (citations.length === 0 && responseText.includes('according to') || responseText.includes('as stated in')) {
+    if (citations.length === 0 && (responseText.includes('according to') || responseText.includes('as stated in'))) {
       flags.push({
         type: 'missing_citation',
         severity: 'medium',

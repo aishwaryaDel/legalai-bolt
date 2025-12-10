@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, AlertTriangle, Download, Save, FileText, AlertCircle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 
 interface ValidationFlag {
   type: string;

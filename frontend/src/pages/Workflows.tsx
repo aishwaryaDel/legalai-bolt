@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useColors } from '../lib/colors';
 import { useState, useEffect } from 'react';
 import { workflowService, type WorkflowTask, type ComplianceCheck } from '../lib/workflowService';
-import { supabase } from '../lib/supabase';
 
 export function Workflows() {
   const { isDark } = useTheme();
