@@ -3,7 +3,7 @@ name: Frontend Deployment Trigger
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 on:
   push:
     branches:
@@ -32,8 +32,12 @@ jobs:
     uses: Central-DIT/tesa-app-deploy/.github/workflows/Frontend_docker_deploy.yml@main
     with:
       environment: "dev"
-      image_name: "legalai-ui-dev"
-      app_info: ${{ vars.APP_INFO_DEV }}  # App info from GitHub variable
+      image_name: "${{ fromJson(vars.APP_INFO_DEV).application_name}}-ui-dev"
+      app_info: '{ 
+        "ui_container_app_name": "${{ fromJson(vars.APP_INFO_DEV).container_app_prefix }}${{ fromJson(vars.APP_INFO_DEV).application_name }}ui",
+        "app_resource_group": "${{ fromJson(vars.APP_INFO_DEV).app_resource_group }}",
+        "acr_name": "${{ fromJson(vars.APP_INFO_DEV).acr_name }}"
+        }'
     secrets:
       azure_creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
       docker_env: ${{ secrets.DOCKER_ENV_DEV }}
@@ -45,8 +49,12 @@ jobs:
     uses: Central-DIT/tesa-app-deploy/.github/workflows/Frontend_docker_deploy.yml@main
     with:
       environment: "prod"
-      image_name: "legalai-ui-prd"
-      app_info: ${{ vars.APP_INFO_PRD }}  # App info from GitHub variable
+      image_name: "${{ fromJson(vars.APP_INFO_PRD).application_name}}-ui-prd"
+      app_info: '{ 
+        "ui_container_app_name": "${{ fromJson(vars.APP_INFO_PRD).container_app_prefix }}${{ fromJson(vars.APP_INFO_PRD).application_name }}ui",
+        "app_resource_group": "${{ fromJson(vars.APP_INFO_PRD).app_resource_group }}",
+        "acr_name": "${{ fromJson(vars.APP_INFO_PRD).acr_name }}"
+        }'
     secrets:
       azure_creds: ${{ secrets.AZURE_CREDENTIALS_PRD }}
       docker_env: ${{ secrets.DOCKER_ENV_PRD }}

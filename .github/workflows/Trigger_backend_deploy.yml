@@ -32,8 +32,12 @@ jobs:
     uses: Central-DIT/tesa-app-deploy/.github/workflows/Backend_docker_deploy.yml@main
     with:
       environment: "dev"
-      image_name: "legalai-api-dev"
-      app_info: ${{ vars.APP_INFO_DEV }}  # App info from GitHub variable
+      image_name: "${{ fromJson(vars.APP_INFO_DEV).application_name}}-api-dev"
+      app_info: '{ 
+        "api_container_app_name": "${{ fromJson(vars.APP_INFO_DEV).container_app_prefix }}${{ fromJson(vars.APP_INFO_DEV).application_name }}api",
+        "app_resource_group": "${{ fromJson(vars.APP_INFO_DEV).app_resource_group }}",
+        "acr_name": "${{ fromJson(vars.APP_INFO_DEV).acr_name }}"
+        }'
     secrets:
       azure_creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
       docker_env: ${{ secrets.DOCKER_ENV_DEV }} 
@@ -45,8 +49,12 @@ jobs:
     uses: Central-DIT/tesa-app-deploy/.github/workflows/Backend_docker_deploy.yml@main
     with:
       environment: "prod"
-      image_name: "legalai-api-prd"
-      app_info: ${{ vars.APP_INFO_PRD }}  # App info from GitHub variable
+      image_name: "${{ fromJson(vars.APP_INFO_PRD).application_name}}-api-prd"
+      app_info: '{ 
+        "api_container_app_name": "${{ fromJson(vars.APP_INFO_PRD).container_app_prefix }}${{ fromJson(vars.APP_INFO_PRD).application_name }}api",
+        "app_resource_group": "${{ fromJson(vars.APP_INFO_PRD).app_resource_group }}",
+        "acr_name": "${{ fromJson(vars.APP_INFO_PRD).acr_name }}"
+        }'
     secrets:
       azure_creds: ${{ secrets.AZURE_CREDENTIALS_PRD }}
       docker_env: ${{ secrets.DOCKER_ENV_PRD }} 
