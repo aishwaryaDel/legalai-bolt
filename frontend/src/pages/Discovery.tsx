@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useLocale } from '../contexts/LocaleContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { FolderSearch, Plus, Loader, CheckCircle, XCircle, Download } from 'lucide-react';
 
 export function Discovery() {

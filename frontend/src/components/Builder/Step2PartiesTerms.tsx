@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Building2, MapPin, Calendar, DollarSign, AlertTriangle, Search, Users, AlertCircle, User, Briefcase, Clock } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 import { shouldShowPaymentTerms, shouldShowLiabilityTerms, getContextualWarnings } from '../../lib/builderRules';
 
 interface Partner {

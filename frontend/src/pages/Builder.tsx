@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { ChevronRight, ChevronLeft, CheckCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { Step0ContextSetup } from '../components/Builder/Step0ContextSetup';
 import { Step1DealFrame } from '../components/Builder/Step1DealFrame';
 import { Step2PartiesTerms } from '../components/Builder/Step2PartiesTerms';

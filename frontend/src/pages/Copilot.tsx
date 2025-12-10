@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useColors } from '../lib/colors';
 import { mockData, jurisdictions, aiModels, type AIModel } from '../lib/config';
-import { supabase } from '../lib/supabase';
 import { ToolModal } from '../components/Copilot/ToolModals';
 import { CitationDrawer } from '../components/Copilot/CitationDrawer';
 import { enhancedAIService } from '../lib/enhancedAIService';
