@@ -7,7 +7,7 @@ describe('App', () => {
       const response = await request(app).get('/');
 
       expect(response.status).toBe(200);
-      expect(response.text).toContain('Tesa AI Hub Backend is running');
+      expect(response.text).toContain('Tesa Legal AI  Backend is running');
     });
   });
 
