@@ -122,6 +122,50 @@ class ApiClient {
     removeByUserAndRole: (userId: string, roleId: string) =>
       this.delete<void>(`/api/user-roles/user/${userId}/role/${roleId}`),
   };
+
+  files = {
+    upload: async (file: File): Promise<ApiResponse<{ url: string }>> => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const url = buildUrl('/api/files/upload');
+      const headers: Record<string, string> = {};
+
+      if (this.token) {
+        headers['Authorization'] = `Bearer ${this.token}`;
+      }
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: formData,
+          signal: AbortSignal.timeout(apiConfig.timeout),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          return {
+            success: false,
+            error: data.message || data.error || 'Upload failed',
+          };
+        }
+
+        return {
+          success: true,
+          data: data,
+          message: data.message,
+        };
+      } catch (error) {
+        console.error('File upload error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Network error',
+        };
+      }
+    },
+  };
 }
 
 export const apiClient = new ApiClient();

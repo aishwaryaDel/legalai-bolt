@@ -1,8 +1,16 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useLocale } from '../contexts/LocaleContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Upload, CheckCircle, Loader, FileText, Send } from 'lucide-react';
+import { Upload, CheckCircle, Loader, FileText, Send, X, AlertCircle } from 'lucide-react';
+import { apiClient } from '../lib/apiClient';
+
+interface UploadedFile {
+  name: string;
+  size: number;
+  url: string;
+  uploadedAt: Date;
+}
 
 export function Intake() {
   const { isDark } = useTheme();
@@ -10,48 +18,63 @@ export function Intake() {
   const { user } = useAuth();
   const [tab, setTab] = useState<'ask' | 'onedrop' | 'requests'>('onedrop');
   const [uploading, setUploading] = useState(false);
-  const [extracted, setExtracted] = useState<any>(null);
+  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFileUpload(file: File) {
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError(null);
+    setUploadedFile(null);
+
+    const result = await apiClient.files.upload(file);
+
+    if (result.success && result.data) {
+      setUploadedFile({
+        name: file.name,
+        size: file.size,
+        url: result.data.url,
+        uploadedAt: new Date(),
+      });
+      setUploading(false);
+    } else {
+      setUploadError(result.error || 'Upload failed. Please try again.');
+      setUploading(false);
+    }
+  }
 
   async function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (!file) return;
+    if (file) {
+      await handleFileUpload(file);
+    }
+  }
 
-    setUploading(true);
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  }
 
-    setTimeout(() => {
-      setExtracted({
-        type: 'NDA',
-        parties: ['tesa SE', 'Example Partner GmbH'],
-        effectiveDate: '2025-01-15',
-        jurisdiction: 'Germany',
-        language: 'de',
-        confidence: 0.92,
-      });
-      setUploading(false);
-    }, 2000);
+  function resetUpload() {
+    setUploadedFile(null);
+    setUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   }
 
   async function createCLMRequest() {
-    if (!user || !extracted) return;
+    if (!user || !uploadedFile) return;
 
-    const { data } = await supabase
-      .from('intake_requests')
-      .insert({
-        type: 'one-drop',
-        created_by: user.id,
-        extracted_metadata: extracted,
-        status: 'pending',
-      })
-      .select()
-      .single();
-
-    if (data) {
-      alert('CLM Request Created: #' + data.id.slice(0, 8));
-      setExtracted(null);
-    }
+    alert(`CLM Request Created for file: ${uploadedFile.name}\nFile URL: ${uploadedFile.url}`);
+    resetUpload();
   }
 
   async function submitQuestion() {
@@ -59,24 +82,12 @@ export function Intake() {
 
     setSubmitting(true);
 
-    const { data } = await supabase
-      .from('intake_requests')
-      .insert({
-        type: 'question',
-        created_by: user.id,
-        extracted_metadata: { question: question.trim() },
-        status: 'pending',
-      })
-      .select()
-      .single();
-
-    setSubmitting(false);
-
-    if (data) {
-      alert('Question submitted successfully! Request ID: #' + data.id.slice(0, 8));
+    setTimeout(() => {
+      setSubmitting(false);
+      alert(`Question submitted successfully!\nQuestion: ${question.trim()}`);
       setQuestion('');
       setTab('requests');
-    }
+    }, 1000);
   }
 
   return (
@@ -104,63 +115,63 @@ export function Intake() {
       </div>
 
       {tab === 'onedrop' && (
-        <div className={`${isDark ? "bg-slate-800/50 border-slate-700 backdrop-blur-sm" : "bg-white"} rounded-xl border-2 border-dashed border-slate-300 p-12 text-center`}>
+        <div className={`${isDark ? "bg-slate-800/50 border-slate-700 backdrop-blur-sm" : "bg-white"} rounded-xl border-2 border-dashed ${uploadError ? 'border-red-400' : 'border-slate-300'} p-12 text-center`}>
           {uploading ? (
             <div className="py-12">
               <Loader className="animate-spin mx-auto mb-4 text-tesa-blue" size={48} />
-              <p className="text-slate-700 font-medium">{t.intake.extracting}</p>
+              <p className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Uploading file...</p>
             </div>
-          ) : extracted ? (
+          ) : uploadError ? (
+            <div className="max-w-2xl mx-auto">
+              <AlertCircle size={64} className="mx-auto mb-4 text-red-500" />
+              <h2 className={`text-2xl font-bold ${isDark ? "text-white" : "text-slate-900"} mb-4`}>Upload Failed</h2>
+              <p className={`mb-6 ${isDark ? 'text-red-400' : 'text-red-600'}`}>{uploadError}</p>
+              <button
+                onClick={resetUpload}
+                className="px-6 py-2 bg-tesa-blue text-white rounded-lg hover:brightness-110 transition-all"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : uploadedFile ? (
             <div className="max-w-2xl mx-auto">
               <CheckCircle size={64} className="mx-auto mb-4 text-green-600" />
-              <h2 className={`text-2xl font-bold ${isDark ? "text-white" : "text-slate-900"} mb-6`}>Metadata Extracted</h2>
+              <h2 className={`text-2xl font-bold ${isDark ? "text-white" : "text-slate-900"} mb-6`}>File Uploaded Successfully</h2>
 
-              <div className="bg-slate-50 rounded-lg p-6 text-left space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"} mb-1`}>Contract Type</div>
-                    <div className={`font-medium ${isDark ? "text-white" : "text-slate-900"}`}>{extracted.type}</div>
-                  </div>
-                  <div>
-                    <div className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"} mb-1`}>Jurisdiction</div>
-                    <div className={`font-medium ${isDark ? "text-white" : "text-slate-900"}`}>{extracted.jurisdiction}</div>
-                  </div>
-                  <div>
-                    <div className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"} mb-1`}>Language</div>
-                    <div className={`font-medium ${isDark ? "text-white" : "text-slate-900"} uppercase`}>{extracted.language}</div>
-                  </div>
-                  <div>
-                    <div className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"} mb-1`}>Effective Date</div>
-                    <div className={`font-medium ${isDark ? "text-white" : "text-slate-900"}`}>{extracted.effectiveDate}</div>
+              <div className={`${isDark ? 'bg-slate-900/50' : 'bg-slate-50'} rounded-lg p-6 text-left space-y-4`}>
+                <div className="flex items-start gap-4">
+                  <FileText className={`${isDark ? 'text-tesa-blue' : 'text-tesa-blue'} flex-shrink-0 mt-1`} size={24} />
+                  <div className="flex-1 min-w-0">
+                    <div className={`font-medium ${isDark ? "text-white" : "text-slate-900"} truncate`}>{uploadedFile.name}</div>
+                    <div className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"} mt-1`}>
+                      {(uploadedFile.size / 1024).toFixed(2)} KB • Uploaded at {uploadedFile.uploadedAt.toLocaleTimeString()}
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <div className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"} mb-1`}>Parties</div>
-                  <div className={`font-medium ${isDark ? "text-white" : "text-slate-900"}`}>
-                    {extracted.parties.join(' ↔ ')}
+                <div className={`pt-4 border-t ${isDark ? "border-slate-700" : "border-slate-200"}`}>
+                  <div className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"} mb-3`}>
+                    File URL:
+                  </div>
+                  <div className={`text-xs ${isDark ? "text-slate-500" : "text-slate-500"} break-all bg-slate-800 p-3 rounded font-mono`}>
+                    {uploadedFile.url}
                   </div>
                 </div>
 
-                <div className={`flex items-center justify-between pt-4 border-t ${isDark ? "border-slate-700" : "border-slate-200"}`}>
-                  <div className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                    Confidence: {Math.round(extracted.confidence * 100)}%
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setExtracted(null)}
-                      className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={createCLMRequest}
-                      className="px-6 py-2 bg-tesa-blue text-white rounded-lg hover:bg-tesa-blue hover:brightness-110 flex items-center gap-2"
-                    >
-                      <Send size={18} />
-                      {t.intake.createRequest}
-                    </button>
-                  </div>
+                <div className={`flex items-center justify-end gap-2 pt-4 border-t ${isDark ? "border-slate-700" : "border-slate-200"}`}>
+                  <button
+                    onClick={resetUpload}
+                    className={`px-4 py-2 border ${isDark ? 'border-slate-600 hover:bg-slate-800' : 'border-slate-300 hover:bg-slate-50'} rounded-lg transition-colors`}
+                  >
+                    Upload Another
+                  </button>
+                  <button
+                    onClick={createCLMRequest}
+                    className="px-6 py-2 bg-tesa-blue text-white rounded-lg hover:brightness-110 flex items-center gap-2 transition-all"
+                  >
+                    <Send size={18} />
+                    Create Request
+                  </button>
                 </div>
               </div>
             </div>
@@ -168,11 +179,23 @@ export function Intake() {
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
               className="cursor-pointer"
             >
-              <Upload size={64} className="mx-auto mb-4 text-slate-400" />
-              <p className="text-lg font-medium text-slate-700 mb-2">{t.intake.dropzone}</p>
-              <p className="text-sm text-slate-500">PDF, DOCX up to 50MB</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileSelect}
+                className="hidden"
+                accept=".pdf,.doc,.docx"
+              />
+              <Upload size={64} className={`mx-auto mb-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+              <p className={`text-lg font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'} mb-2`}>
+                Drop your file here or click to browse
+              </p>
+              <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                PDF, DOC, DOCX up to 50MB
+              </p>
             </div>
           )}
         </div>
