@@ -167,6 +167,11 @@ class ApiClient {
       }
     },
   };
+
+  documents = {
+    generatePreview: (builderState: any) =>
+      this.post<any>('/api/documents/generate-preview', builderState),
+  };
 }
 
 export const apiClient = new ApiClient();
