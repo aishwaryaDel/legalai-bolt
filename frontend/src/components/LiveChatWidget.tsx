@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { MessageCircle, X, Minimize2, Send } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useColors } from '../lib/colors';
+import { socketService } from '../lib/socketService';
 
 interface Message {
   id: string;
@@ -48,6 +49,38 @@ export function LiveChatWidget() {
     };
   }, []);
 
+  useEffect(() => {
+    const socket = socketService.connect();
+
+    socket.on('ai_response', (response: string) => {
+      const agentMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: response,
+        sender: 'agent',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, agentMessage]);
+      setIsTyping(false);
+    });
+
+    socket.on('chat_error', (error: string) => {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: `Sorry, I encountered an error: ${error}`,
+        sender: 'agent',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      setIsTyping(false);
+    });
+
+    return () => {
+      socket.off('ai_response');
+      socket.off('chat_error');
+      socketService.disconnect();
+    };
+  }, []);
+
   const handleOpen = () => {
     setIsOpen(true);
     setIsMinimized(false);
@@ -85,47 +118,16 @@ export function LiveChatWidget() {
     setIsTyping(true);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/openai-chat`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [
-            ...messages.map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text })),
-            { role: 'user', content: currentInput },
-          ],
-          model: 'gpt-4o-mini',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get response from AI');
-      }
-
-      const data = await response.json();
-
-      const agentMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: data.message,
-        sender: 'agent',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, agentMessage]);
+      socketService.emit('user_message', currentInput);
     } catch (error) {
-      console.error('Error in live chat:', error);
+      console.error('Error sending message:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'Sorry, I encountered an error. Please try again.',
+        text: 'Sorry, I could not send your message. Please try again.',
         sender: 'agent',
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
-    } finally {
       setIsTyping(false);
     }
   };
