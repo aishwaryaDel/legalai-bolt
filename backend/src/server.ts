@@ -17,13 +17,13 @@ app.get('/api-docs.json', (req, res) => {
 const pathsCount = swaggerSpec && swaggerSpec.paths ? Object.keys(swaggerSpec.paths).length : 0;
 console.log(`📚 Swagger spec generated with ${pathsCount} path(s)`);
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: process.env.FRONTEND_URL,
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -37,9 +37,9 @@ async function startServer() {
     setupChatController(io);
 
     server.listen(PORT, () => {
-      console.log(`✅ Server läuft auf Port ${PORT}`);
+      console.log(`✅ Server started on Port ${PORT}`);
       console.log(`🔌 WebSocket server ready for connections`);
-      console.log(`📡 Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
+      console.log(`📡 Frontend URL: ${process.env.FRONTEND_URL }`);
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);

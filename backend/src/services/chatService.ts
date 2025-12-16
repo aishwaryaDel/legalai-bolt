@@ -51,7 +51,7 @@ class ChatService {
         items: [{ type: "message", role: "user", content: userMessage }]
       });
 
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 180000));
 
       const response = await this.openAIClient.responses.create(
         { conversation: conversation.id },
