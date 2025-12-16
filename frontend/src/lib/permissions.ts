@@ -1,0 +1,256 @@
+import { Role, UserRole } from '../types/api';
+import { appRoutes } from './config';
+
+export enum Permission {
+  DOCUMENTS_CREATE = 'documents.create',
+  DOCUMENTS_READ = 'documents.read',
+  DOCUMENTS_UPDATE = 'documents.update',
+  DOCUMENTS_DELETE = 'documents.delete',
+
+  CONTRACTS_CREATE = 'contracts.create',
+  CONTRACTS_READ = 'contracts.read',
+  CONTRACTS_UPDATE = 'contracts.update',
+  CONTRACTS_DELETE = 'contracts.delete',
+  CONTRACTS_APPROVE = 'contracts.approve',
+  CONTRACTS_SUBMIT = 'contracts.submit',
+
+  TEAM_VIEW = 'team.view',
+  TEAM_MANAGE = 'team.manage',
+  TEAM_ASSIGN = 'team.assign',
+
+  ANALYTICS_VIEW = 'analytics.view',
+
+  SYSTEM_CONFIGURE = 'system.configure',
+  SYSTEM_MONITOR = 'system.monitor',
+
+  USERS_CREATE = 'users.create',
+  USERS_READ = 'users.read',
+  USERS_UPDATE = 'users.update',
+  USERS_DELETE = 'users.delete',
+
+  ROLES_CREATE = 'roles.create',
+  ROLES_READ = 'roles.read',
+  ROLES_UPDATE = 'roles.update',
+  ROLES_DELETE = 'roles.delete',
+
+  DEPARTMENTS_CREATE = 'departments.create',
+  DEPARTMENTS_READ = 'departments.read',
+  DEPARTMENTS_UPDATE = 'departments.update',
+  DEPARTMENTS_DELETE = 'departments.delete',
+}
+
+export enum RoleName {
+  PLATFORM_ADMINISTRATOR = 'Platform Administrator',
+  LEGAL_ADMIN = 'Legal Admin',
+  DEPARTMENT_ADMIN = 'Department Admin',
+  DEPARTMENT_USER = 'Department User',
+}
+
+export interface RoutePermission {
+  path: string;
+  roles?: RoleName[];
+  permissions?: Permission[];
+  requireAll?: boolean;
+}
+
+export const routePermissions: RoutePermission[] = [
+  {
+    path: appRoutes.home,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+  },
+  {
+    path: appRoutes.legalai,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+  },
+  {
+    path: appRoutes.review,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+    permissions: [Permission.CONTRACTS_READ],
+  },
+  {
+    path: appRoutes.draft,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+    permissions: [Permission.DOCUMENTS_CREATE],
+  },
+  {
+    path: appRoutes.builder,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+    permissions: [Permission.DOCUMENTS_CREATE],
+  },
+  {
+    path: appRoutes.repository,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+    permissions: [Permission.DOCUMENTS_READ],
+  },
+  {
+    path: appRoutes.intake,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN],
+    permissions: [Permission.CONTRACTS_SUBMIT],
+  },
+  {
+    path: appRoutes.search,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+    permissions: [Permission.DOCUMENTS_READ],
+  },
+  {
+    path: appRoutes.clauses,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN],
+    permissions: [Permission.DOCUMENTS_READ],
+  },
+  {
+    path: appRoutes.playbooks,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN],
+    permissions: [Permission.DOCUMENTS_READ],
+  },
+  {
+    path: appRoutes.workflows,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN],
+    permissions: [Permission.TEAM_VIEW],
+  },
+  {
+    path: appRoutes.analytics,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN],
+    permissions: [Permission.ANALYTICS_VIEW],
+  },
+  {
+    path: appRoutes.partners,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+    permissions: [Permission.TEAM_VIEW],
+  },
+  {
+    path: appRoutes.discovery,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+    permissions: [Permission.DOCUMENTS_READ],
+  },
+  {
+    path: appRoutes.research,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+    permissions: [Permission.DOCUMENTS_READ],
+  },
+  {
+    path: appRoutes.admin,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR],
+    permissions: [Permission.SYSTEM_CONFIGURE],
+  },
+  {
+    path: appRoutes.settings,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+  },
+  {
+    path: appRoutes.help,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+  },
+  {
+    path: appRoutes.legal,
+    roles: [RoleName.PLATFORM_ADMINISTRATOR, RoleName.LEGAL_ADMIN, RoleName.DEPARTMENT_ADMIN, RoleName.DEPARTMENT_USER],
+  },
+];
+
+export class PermissionChecker {
+  private userRoles: UserRole[];
+
+  constructor(userRoles: UserRole[]) {
+    this.userRoles = userRoles.filter(ur => ur.is_active !== false && ur.role?.is_active !== false);
+  }
+
+  hasRole(roleName: RoleName): boolean {
+    return this.userRoles.some(ur => ur.role?.name === roleName);
+  }
+
+  hasAnyRole(roleNames: RoleName[]): boolean {
+    return roleNames.some(roleName => this.hasRole(roleName));
+  }
+
+  hasAllRoles(roleNames: RoleName[]): boolean {
+    return roleNames.every(roleName => this.hasRole(roleName));
+  }
+
+  hasPermission(permission: Permission): boolean {
+    return this.userRoles.some(ur => {
+      if (!ur.role?.permissions) return false;
+
+      const [resource, action] = permission.split('.');
+      return ur.role.permissions[resource]?.[action] === true;
+    });
+  }
+
+  hasAnyPermission(permissions: Permission[]): boolean {
+    return permissions.some(permission => this.hasPermission(permission));
+  }
+
+  hasAllPermissions(permissions: Permission[]): boolean {
+    return permissions.every(permission => this.hasPermission(permission));
+  }
+
+  canAccessRoute(routePath: string): boolean {
+    const routePermission = routePermissions.find(rp => {
+      if (rp.path === routePath) return true;
+      if (rp.path.includes(':')) {
+        const pattern = rp.path.replace(/:[^/]+/g, '[^/]+');
+        const regex = new RegExp(`^${pattern}$`);
+        return regex.test(routePath);
+      }
+      return false;
+    });
+
+    if (!routePermission) {
+      return true;
+    }
+
+    const hasRequiredRole = !routePermission.roles || this.hasAnyRole(routePermission.roles);
+
+    if (!routePermission.permissions) {
+      return hasRequiredRole;
+    }
+
+    const hasRequiredPermissions = routePermission.requireAll
+      ? this.hasAllPermissions(routePermission.permissions)
+      : this.hasAnyPermission(routePermission.permissions);
+
+    return hasRequiredRole && hasRequiredPermissions;
+  }
+
+  getRoleNames(): string[] {
+    return this.userRoles.map(ur => ur.role?.name || '').filter(Boolean);
+  }
+
+  isPlatformAdmin(): boolean {
+    return this.hasRole(RoleName.PLATFORM_ADMINISTRATOR);
+  }
+
+  isLegalAdmin(): boolean {
+    return this.hasRole(RoleName.LEGAL_ADMIN);
+  }
+
+  isDepartmentAdmin(): boolean {
+    return this.hasRole(RoleName.DEPARTMENT_ADMIN);
+  }
+
+  isDepartmentUser(): boolean {
+    return this.hasRole(RoleName.DEPARTMENT_USER);
+  }
+
+  getHighestRole(): RoleName | null {
+    if (this.isPlatformAdmin()) return RoleName.PLATFORM_ADMINISTRATOR;
+    if (this.isLegalAdmin()) return RoleName.LEGAL_ADMIN;
+    if (this.isDepartmentAdmin()) return RoleName.DEPARTMENT_ADMIN;
+    if (this.isDepartmentUser()) return RoleName.DEPARTMENT_USER;
+    return null;
+  }
+}
+
+export function createPermissionChecker(userRoles: UserRole[]): PermissionChecker {
+  return new PermissionChecker(userRoles);
+}
+
+export function getAccessibleRoutes(userRoles: UserRole[]): string[] {
+  const checker = createPermissionChecker(userRoles);
+  return routePermissions
+    .filter(rp => checker.canAccessRoute(rp.path))
+    .map(rp => rp.path);
+}
+
+export function filterRoutesByPermission(routes: RoutePermission[], userRoles: UserRole[]): RoutePermission[] {
+  const checker = createPermissionChecker(userRoles);
+  return routes.filter(route => checker.canAccessRoute(route.path));
+}
