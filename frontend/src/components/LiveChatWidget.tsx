@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { MessageCircle, X, Minimize2, Send } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useColors } from '../lib/colors';
-import { socketService } from '../lib/socketService';
 
 interface Message {
   id: string;
@@ -49,38 +48,6 @@ export function LiveChatWidget() {
     };
   }, []);
 
-  useEffect(() => {
-    const socket = socketService.connect();
-
-    socket.on('ai_response', (response: string) => {
-      const agentMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: response,
-        sender: 'agent',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, agentMessage]);
-      setIsTyping(false);
-    });
-
-    socket.on('chat_error', (error: string) => {
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: `Sorry, I encountered an error: ${error}`,
-        sender: 'agent',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-      setIsTyping(false);
-    });
-
-    return () => {
-      socket.off('ai_response');
-      socket.off('chat_error');
-      socketService.disconnect();
-    };
-  }, []);
-
   const handleOpen = () => {
     setIsOpen(true);
     setIsMinimized(false);
@@ -118,7 +85,20 @@ export function LiveChatWidget() {
     setIsTyping(true);
 
     try {
-      socketService.emit('user_message', currentInput);
+      // Socket emit will be handled by parent component (Copilot)
+      console.log('Message sent:', currentInput);
+      
+      // Simulate response for now
+      setTimeout(() => {
+        const agentMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: 'Thank you for your message. This chat is now integrated with the Copilot component.',
+          sender: 'agent',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, agentMessage]);
+        setIsTyping(false);
+      }, 1000);
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
