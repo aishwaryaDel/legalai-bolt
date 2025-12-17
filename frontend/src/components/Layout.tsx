@@ -11,7 +11,6 @@ import {
   Bell, User, Moon, Sun, Blocks
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { LiveChatWidget } from './LiveChatWidget';
 
 interface LayoutProps {
   children: ReactNode;
@@ -189,8 +188,6 @@ export function Layout({ children }: LayoutProps) {
           {children}
         </main>
       </div>
-
-      <LiveChatWidget />
     </div>
   );
 }
