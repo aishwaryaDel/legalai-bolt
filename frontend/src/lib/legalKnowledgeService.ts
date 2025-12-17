@@ -79,6 +79,11 @@ class LegalKnowledgeService {
     return [];
   }
 
+  async getRecentLegalUpdates(jurisdiction?: string, limit: number = 20): Promise<LegalUpdate[]> {
+    console.warn('LegalKnowledgeService: Backend API integration pending');
+    return [];
+  }
+
   async getClauseSuggestions(context: {
     clause_type: string;
     jurisdiction: string;

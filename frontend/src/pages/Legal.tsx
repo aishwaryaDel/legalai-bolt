@@ -1,13 +1,21 @@
-import { Scale, Search, Book, ExternalLink, Filter, Calendar, MapPin } from 'lucide-react';
+import { Scale, Search, Book, ExternalLink, Filter, Calendar, MapPin, MessageCircle, Send } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useColors } from '../lib/colors';
 import { useState, useEffect } from 'react';
 import { legalKnowledgeService, type LegalSource, type LegalUpdate } from '../lib/legalKnowledgeService';
+import { socketService } from '../lib/socketService';
+
+interface Message {
+  id: string;
+  text: string;
+  sender: 'user' | 'agent';
+  timestamp: Date;
+}
 
 export function Legal() {
   const { isDark } = useTheme();
   const c = useColors(isDark);
-  const [activeTab, setActiveTab] = useState<'search' | 'updates' | 'info'>('search');
+  const [activeTab, setActiveTab] = useState<'chat' | 'search' | 'updates' | 'info'>('chat');
   const [searchQuery, setSearchQuery] = useState('');
   const [jurisdiction, setJurisdiction] = useState('DACH');
   const [sourceType, setSourceType] = useState('all');
@@ -15,12 +23,54 @@ export function Legal() {
   const [legalUpdates, setLegalUpdates] = useState<LegalUpdate[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSource, setSelectedSource] = useState<LegalSource | null>(null);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      text: 'Hello! I am your Legal AI assistant. How can I help you today?',
+      sender: 'agent',
+      timestamp: new Date(),
+    },
+  ]);
+  const [inputValue, setInputValue] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'updates') {
       loadRecentUpdates();
     }
   }, [activeTab, jurisdiction]);
+
+  useEffect(() => {
+    const socket = socketService.connect();
+
+    socket.on('ai_response', (response: string) => {
+      const agentMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: response,
+        sender: 'agent',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, agentMessage]);
+      setIsTyping(false);
+    });
+
+    socket.on('chat_error', (error: string) => {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: `Sorry, I encountered an error: ${error}`,
+        sender: 'agent',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      setIsTyping(false);
+    });
+
+    return () => {
+      socket.off('ai_response');
+      socket.off('chat_error');
+      socketService.disconnect();
+    };
+  }, []);
 
   async function handleSearch() {
     setLoading(true);
@@ -54,6 +104,43 @@ export function Legal() {
     }
   }
 
+  const handleSendMessage = async () => {
+    if (!inputValue.trim()) return;
+
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      text: inputValue,
+      sender: 'user',
+      timestamp: new Date(),
+    };
+
+    setMessages([...messages, newMessage]);
+    const currentInput = inputValue;
+    setInputValue('');
+    setIsTyping(true);
+
+    try {
+      socketService.emit('user_message', currentInput);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Sorry, I could not send your message. Please try again.',
+        sender: 'agent',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      setIsTyping(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   const getSourceTypeColor = (type: string) => {
     switch (type) {
       case 'law': return 'bg-purple-100 text-purple-700 border-purple-200';
@@ -86,6 +173,19 @@ export function Legal() {
       </div>
 
       <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            activeTab === 'chat'
+              ? 'bg-tesa-blue text-white'
+              : `${c.bg.tertiary} ${c.text.secondary} hover:bg-opacity-80`
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <MessageCircle size={16} />
+            Legal AI Chat
+          </div>
+        </button>
         <button
           onClick={() => setActiveTab('search')}
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -126,6 +226,107 @@ export function Legal() {
           </div>
         </button>
       </div>
+
+      {activeTab === 'chat' && (
+        <div className={`${c.card.bg} border ${c.card.border} rounded-lg flex flex-col h-[calc(100vh-16rem)]`}>
+          <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-tesa-blue to-blue-600 text-white rounded-t-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <MessageCircle size={20} />
+              </div>
+              <div>
+                <h3 className="font-semibold">Legal AI Assistant</h3>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  <span>Online</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                    message.sender === 'user'
+                      ? 'bg-tesa-blue text-white rounded-br-sm'
+                      : isDark
+                      ? 'bg-slate-800 text-white rounded-bl-sm'
+                      : 'bg-slate-100 text-slate-900 rounded-bl-sm'
+                  }`}
+                >
+                  <p className="text-sm">{message.text}</p>
+                  <p
+                    className={`text-xs mt-1 ${
+                      message.sender === 'user' ? 'text-blue-100' : 'text-slate-500'
+                    }`}
+                  >
+                    {message.timestamp.toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div
+                  className={`rounded-2xl px-4 py-3 ${
+                    isDark ? 'bg-slate-800' : 'bg-slate-100'
+                  }`}
+                >
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" />
+                    <span
+                      className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                      style={{ animationDelay: '0.2s' }}
+                    />
+                    <span
+                      className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                      style={{ animationDelay: '0.4s' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={`p-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message..."
+                className={`flex-1 px-4 py-2 rounded-lg ${
+                  isDark
+                    ? 'bg-slate-800 text-white border-slate-700'
+                    : 'bg-slate-50 text-slate-900 border-slate-200'
+                } border focus:outline-none focus:ring-2 focus:ring-tesa-blue`}
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim()}
+                className="px-4 py-2 bg-tesa-blue text-white rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Send message"
+              >
+                <Send size={20} />
+              </button>
+            </div>
+            <div className="mt-3 flex items-center justify-between">
+              <p className={`text-xs ${c.text.muted}`}>
+                Average response time: 2 minutes
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab === 'search' && (
         <div className="space-y-4">
