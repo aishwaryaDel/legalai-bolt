@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { mockData } from '../lib/config';
 import { apiClient } from '../lib/apiClient';
-import { createPermissionChecker, PermissionChecker } from '../lib/permissions';
+import { createPermissionChecker, createPermissionCheckerFromRole, PermissionChecker } from '../lib/permissions';
 import type { User, UserRole } from '../types/api';
 
 interface AuthContextType {
@@ -20,6 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const DEMO_USER_KEY = 'legalai_demo_user';
 const USER_ROLES_KEY = 'legalai_user_roles';
+const JWT_TOKEN_KEY = 'legalai_jwt_token';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -58,32 +59,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const demoUser = localStorage.getItem(DEMO_USER_KEY);
-      const storedRoles = localStorage.getItem(USER_ROLES_KEY);
+      // Try to load JWT token from localStorage
+      const token = localStorage.getItem(JWT_TOKEN_KEY);
 
-      if (demoUser) {
+      if (token) {
         try {
-          const parsedUser = JSON.parse(demoUser);
-          setUser(parsedUser);
+          // Set token in API client
+          apiClient.setToken(token);
 
-          if (storedRoles) {
-            try {
-              const roles = JSON.parse(storedRoles);
-              setUserRoles(roles);
-              setPermissions(createPermissionChecker(roles));
-            } catch (e) {
-              console.error('Failed to parse stored roles', e);
-              await fetchUserRoles(parsedUser.id);
+          // Validate token by fetching current user
+          const response = await apiClient.auth.getMe();
+          
+          if (response.success && response.data) {
+            setUser(response.data);
+            
+            // If user has a role field, use it directly for permissions
+            if (response.data.role) {
+              const rolePermissions = createPermissionCheckerFromRole(response.data.role);
+              setPermissions(rolePermissions);
+              setUserRoles([]); // No userRoles from RBAC system
+            } else {
+              // Fallback: Fetch user roles from RBAC system
+              await fetchUserRoles(response.data.id);
             }
           } else {
-            await fetchUserRoles(parsedUser.id);
+            // Token is invalid, clear it
+            localStorage.removeItem(JWT_TOKEN_KEY);
+            apiClient.setToken(null);
           }
         } catch (e) {
-          console.error('Failed to parse demo user', e);
-          localStorage.removeItem(DEMO_USER_KEY);
-          localStorage.removeItem(USER_ROLES_KEY);
+          console.error('Failed to validate token', e);
+          localStorage.removeItem(JWT_TOKEN_KEY);
+          apiClient.setToken(null);
         }
       }
+      
       setLoading(false);
     };
 
@@ -91,19 +101,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    throw new Error('Backend authentication not yet implemented');
+    try {
+      const response = await apiClient.auth.login(email, password);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Login failed');
+      }
+
+      const { token, user: userData } = response.data;
+
+      // Store token
+      localStorage.setItem(JWT_TOKEN_KEY, token);
+      apiClient.setToken(token);
+
+      // Set user
+      setUser(userData);
+
+      // If user has a role field, use it directly for permissions
+      if (userData.role) {
+        const rolePermissions = createPermissionCheckerFromRole(userData.role);
+        setPermissions(rolePermissions);
+        setUserRoles([]); // No userRoles from RBAC system
+      } else {
+        // Fallback: Fetch user roles from RBAC system
+        await fetchUserRoles(userData.id);
+      }
+    } catch (error) {
+      console.error('Sign in error:', error);
+      throw error;
+    }
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    throw new Error('Backend authentication not yet implemented');
+  const signUp = async (_email: string, _password: string, _fullName: string) => {
+    throw new Error('Registration not yet implemented');
   };
 
   const signOut = async () => {
-    localStorage.removeItem(DEMO_USER_KEY);
-    localStorage.removeItem(USER_ROLES_KEY);
-    setUser(null);
-    setUserRoles([]);
-    setPermissions(null);
+    try {
+      // Call logout endpoint (optional)
+      await apiClient.auth.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Clear local state regardless of API call result
+      localStorage.removeItem(JWT_TOKEN_KEY);
+      localStorage.removeItem(DEMO_USER_KEY);
+      localStorage.removeItem(USER_ROLES_KEY);
+      apiClient.setToken(null);
+      setUser(null);
+      setUserRoles([]);
+      setPermissions(null);
+    }
   };
 
   const demoLogin = async () => {

@@ -4,6 +4,8 @@ export interface User {
   username?: string;
   first_name?: string;
   last_name?: string;
+  name?: string; // Full name from backend
+  role?: string; // User role from database (admin, viewer, etc.)
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;

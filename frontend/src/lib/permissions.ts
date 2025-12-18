@@ -243,6 +243,83 @@ export function createPermissionChecker(userRoles: UserRole[]): PermissionChecke
   return new PermissionChecker(userRoles);
 }
 
+/**
+ * Create a simple permission checker from a database role string
+ * This is used when user data comes directly from the users table
+ * Maps database role strings (admin, viewer) to the RoleName enum
+ */
+export function createPermissionCheckerFromRole(role: string): PermissionChecker {
+  // Map database role strings to RoleName enum
+  let roleName: RoleName;
+  let permissions: Record<string, any> = {};
+  
+  switch (role.toLowerCase()) {
+    case 'admin':
+    case 'platform administrator':
+      roleName = RoleName.PLATFORM_ADMINISTRATOR;
+      // Admin has ALL permissions
+      permissions = {
+        documents: { create: true, read: true, update: true, delete: true },
+        contracts: { create: true, read: true, update: true, delete: true, approve: true, submit: true },
+        team: { view: true, manage: true, assign: true },
+        analytics: { view: true },
+        system: { configure: true, monitor: true },
+        users: { create: true, read: true, update: true, delete: true },
+        roles: { create: true, read: true, update: true, delete: true },
+        departments: { create: true, read: true, update: true, delete: true },
+      };
+      break;
+    case 'legal admin':
+      roleName = RoleName.LEGAL_ADMIN;
+      // Legal Admin has most permissions except system configuration
+      permissions = {
+        documents: { create: true, read: true, update: true, delete: true },
+        contracts: { create: true, read: true, update: true, delete: true, approve: true, submit: true },
+        team: { view: true, manage: true, assign: true },
+        analytics: { view: true },
+        users: { read: true, update: true },
+      };
+      break;
+    case 'department admin':
+      roleName = RoleName.DEPARTMENT_ADMIN;
+      // Department Admin has department-level permissions
+      permissions = {
+        documents: { create: true, read: true, update: true },
+        contracts: { create: true, read: true, submit: true },
+        team: { view: true, assign: true },
+        analytics: { view: true },
+      };
+      break;
+    case 'viewer':
+    case 'department user':
+    default:
+      roleName = RoleName.DEPARTMENT_USER;
+      // Viewer has read-only permissions
+      permissions = {
+        documents: { read: true },
+        contracts: { read: true },
+        team: { view: true },
+      };
+      break;
+  }
+
+  // Create a mock UserRole object with permissions
+  const mockUserRole: UserRole = {
+    id: 'mock-id',
+    user_id: 'mock-user-id',
+    role_id: 'mock-role-id',
+    is_active: true,
+    role: {
+      id: 'mock-role-id',
+      name: roleName,
+      is_active: true,
+      permissions: permissions,
+    },
+  };
+
+  return new PermissionChecker([mockUserRole]);
+}
+
 export function getAccessibleRoutes(userRoles: UserRole[]): string[] {
   const checker = createPermissionChecker(userRoles);
   return routePermissions

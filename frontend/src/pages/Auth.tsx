@@ -11,10 +11,10 @@ export function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { locale, setLocale, t } = useLocale();
-  const { demoLogin } = useAuth();
+  const { signIn } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const c = useColors(isDark);
-  const [mode, setMode] = useState<'sso' | 'emergency' | 'request'>('sso');
+  const [mode, setMode] = useState<'sso' | 'emergency' | 'request'>('emergency'); // Changed default to emergency for real auth
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showEmergency, setShowEmergency] = useState(false);
@@ -31,10 +31,10 @@ export function Auth() {
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      demoLogin();
-      navigate(nextUrl);
-    }, 1500);
+    // SSO not implemented yet - show message
+    setError('SSO authentication is not yet implemented. Please use email/password login.');
+    setLoading(false);
+    setMode('emergency');
   }
 
   async function handleEmergencyLogin(e: React.FormEvent) {
@@ -42,15 +42,15 @@ export function Auth() {
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      if (emergencyEmail === 'admin@tesa.com' && emergencyPassword === 'demo') {
-        demoLogin();
-        navigate(nextUrl);
-      } else {
-        setError(t.auth.invalidCredentials);
-        setLoading(false);
-      }
-    }, 1000);
+    try {
+      await signIn(emergencyEmail, emergencyPassword);
+      navigate(nextUrl);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid credentials';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleAccessRequest(e: React.FormEvent) {

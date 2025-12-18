@@ -172,6 +172,13 @@ class ApiClient {
     generatePreview: (builderState: any) =>
       this.post<any>('/api/documents/generate-preview', builderState),
   };
+
+  auth = {
+    login: (email: string, password: string) =>
+      this.post<{ token: string; user: User }>('/api/auth/login', { email, password }),
+    logout: () => this.post<void>('/api/auth/logout'),
+    getMe: () => this.get<User>('/api/auth/me'),
+  };
 }
 
 export const apiClient = new ApiClient();
