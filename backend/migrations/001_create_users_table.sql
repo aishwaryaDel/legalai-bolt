@@ -11,15 +11,7 @@
       - `created_at` (timestamptz) - Timestamp when user was created
       - `updated_at` (timestamptz) - Timestamp when user was last updated
 
-  2. Security
-    - Enable RLS on `users` table
-    - Add policy for authenticated users to read all users
-    - Add policy for authenticated users to read their own data
-    - Add policy for authenticated users to create users
-    - Add policy for authenticated users to update their own data
-    - Add policy for authenticated users to delete users
-
-  3. Important Notes
+  2. Important Notes
     - Email must be unique across all users
     - Password is stored as bcrypt hash
     - All fields except timestamps are required
@@ -35,30 +27,3 @@ CREATE TABLE IF NOT EXISTS users (
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
-
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can read all users"
-  ON users
-  FOR SELECT
-  TO authenticated
-  USING (true);
-
-CREATE POLICY "Users can create users"
-  ON users
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
-
-CREATE POLICY "Users can update all users"
-  ON users
-  FOR UPDATE
-  TO authenticated
-  USING (true)
-  WITH CHECK (true);
-
-CREATE POLICY "Users can delete users"
-  ON users
-  FOR DELETE
-  TO authenticated
-  USING (true);

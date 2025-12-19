@@ -85,47 +85,29 @@ export function LiveChatWidget() {
     setIsTyping(true);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/openai-chat`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [
-            ...messages.map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text })),
-            { role: 'user', content: currentInput },
-          ],
-          model: 'gpt-4o-mini',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get response from AI');
-      }
-
-      const data = await response.json();
-
-      const agentMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: data.message,
-        sender: 'agent',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, agentMessage]);
+      // Socket emit will be handled by parent component (Copilot)
+      console.log('Message sent:', currentInput);
+      
+      // Simulate response for now
+      setTimeout(() => {
+        const agentMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: 'Thank you for your message. This chat is now integrated with the Copilot component.',
+          sender: 'agent',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, agentMessage]);
+        setIsTyping(false);
+      }, 1000);
     } catch (error) {
-      console.error('Error in live chat:', error);
+      console.error('Error sending message:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'Sorry, I encountered an error. Please try again.',
+        text: 'Sorry, I could not send your message. Please try again.',
         sender: 'agent',
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
-    } finally {
       setIsTyping(false);
     }
   };

@@ -25,9 +25,9 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'AIHub Bolt API',
+      title: 'LegalAI API',
       version: '1.0.0',
-      description: 'API documentation for AIHub Bolt backend',
+      description: 'API documentation for LegalAI backend',
     },
   },
   apis,

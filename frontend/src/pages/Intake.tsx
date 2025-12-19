@@ -12,6 +12,8 @@ interface UploadedFile {
   uploadedAt: Date;
 }
 
+type DirectoryType = 'legal' | 'procurement' | 'hr' | 'shared';
+
 export function Intake() {
   const { isDark } = useTheme();
   const { t } = useLocale();
@@ -22,9 +24,11 @@ export function Intake() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [selectedDirectory, setSelectedDirectory] = useState<DirectoryType>('legal');
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileUpload(file: File, directory: string = 'legal') {
+  async function handleFileUpload(file: File, directory: DirectoryType) {
     if (!file) return;
 
     setUploading(true);
@@ -51,20 +55,36 @@ export function Intake() {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file) {
-      await handleFileUpload(file, 'legal');
+      setPendingFile(file);
     }
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
-      handleFileUpload(file, 'legal');
+      setPendingFile(file);
+    }
+  }
+
+  function confirmUpload() {
+    if (pendingFile) {
+      handleFileUpload(pendingFile, selectedDirectory);
+      setPendingFile(null);
+    }
+  }
+
+  function cancelUpload() {
+    setPendingFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   }
 
   function resetUpload() {
     setUploadedFile(null);
     setUploadError(null);
+    setPendingFile(null);
+    setSelectedDirectory('legal');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -132,6 +152,52 @@ export function Intake() {
               >
                 Try Again
               </button>
+            </div>
+          ) : pendingFile ? (
+            <div className="max-w-2xl mx-auto">
+              <FileText size={64} className={`mx-auto mb-4 ${isDark ? 'text-tesa-blue' : 'text-tesa-blue'}`} />
+              <h2 className={`text-2xl font-bold ${isDark ? "text-white" : "text-slate-900"} mb-6`}>Select Destination</h2>
+
+              <div className={`${isDark ? 'bg-slate-900/50' : 'bg-slate-50'} rounded-lg p-6 space-y-6`}>
+                <div className="text-left">
+                  <div className={`font-medium ${isDark ? "text-white" : "text-slate-900"} mb-1`}>{pendingFile.name}</div>
+                  <div className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                    {(pendingFile.size / 1024).toFixed(2)} KB
+                  </div>
+                </div>
+
+                <div className="text-left">
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Select Directory *
+                  </label>
+                  <select
+                    value={selectedDirectory}
+                    onChange={(e) => setSelectedDirectory(e.target.value as DirectoryType)}
+                    className={`w-full p-3 border rounded-lg ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+                  >
+                    <option value="legal">Legal</option>
+                    <option value="procurement">Procurement</option>
+                    <option value="hr">HR</option>
+                    <option value="shared">Shared</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}">
+                  <button
+                    onClick={cancelUpload}
+                    className={`px-4 py-2 border ${isDark ? 'border-slate-600 hover:bg-slate-800' : 'border-slate-300 hover:bg-slate-50'} rounded-lg transition-colors`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmUpload}
+                    className="px-6 py-2 bg-tesa-blue text-white rounded-lg hover:brightness-110 flex items-center gap-2 transition-all"
+                  >
+                    <Upload size={18} />
+                    Upload to {selectedDirectory.charAt(0).toUpperCase() + selectedDirectory.slice(1)}
+                  </button>
+                </div>
+              </div>
             </div>
           ) : uploadedFile ? (
             <div className="max-w-2xl mx-auto">

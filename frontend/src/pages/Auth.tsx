@@ -11,15 +11,15 @@ export function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { locale, setLocale, t } = useLocale();
-  const { demoLogin } = useAuth();
+  const { signIn } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const c = useColors(isDark);
-  const [mode, setMode] = useState<'sso' | 'emergency' | 'request'>('sso');
+  const [mode, setMode] = useState<'sso' | 'emergency' | 'request'>('emergency'); // Login mode
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showEmergency, setShowEmergency] = useState(false);
-  const [emergencyEmail, setEmergencyEmail] = useState('');
-  const [emergencyPassword, setEmergencyPassword] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [requestName, setRequestName] = useState('');
   const [requestEmail, setRequestEmail] = useState('');
   const [requestDept, setRequestDept] = useState('');
@@ -31,10 +31,10 @@ export function Auth() {
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      demoLogin();
-      navigate(nextUrl);
-    }, 1500);
+    // SSO not implemented yet - show message
+    setError('SSO authentication is not yet implemented. Please use email/password login.');
+    setLoading(false);
+    setMode('emergency');
   }
 
   async function handleEmergencyLogin(e: React.FormEvent) {
@@ -42,15 +42,15 @@ export function Auth() {
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      if (emergencyEmail === 'admin@tesa.com' && emergencyPassword === 'demo') {
-        demoLogin();
-        navigate(nextUrl);
-      } else {
-        setError(t.auth.invalidCredentials);
-        setLoading(false);
-      }
-    }, 1000);
+    try {
+      await signIn(loginEmail, loginPassword);
+      navigate(nextUrl);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid credentials';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleAccessRequest(e: React.FormEvent) {
@@ -185,19 +185,15 @@ export function Auth() {
 
             {mode === 'emergency' && (
               <form onSubmit={handleEmergencyLogin} className="space-y-4">
-                <div className={`p-3 ${c.badge.warning.bg} border border-amber-400 rounded-lg text-xs text-amber-800`}>
-                  <strong>{t.auth.emergencyOnly}</strong> — {t.auth.emergencyMonitored}
-                </div>
-
                 <div>
-                  <label htmlFor="emergency-email" className={`block text-sm font-medium ${c.text.primary} mb-2`}>
-                    {t.auth.adminEmail}
+                  <label htmlFor="login-email" className={`block text-sm font-medium ${c.text.primary} mb-2`}>
+                    Email
                   </label>
                   <input
-                    id="emergency-email"
+                    id="login-email"
                     type="email"
-                    value={emergencyEmail}
-                    onChange={(e) => setEmergencyEmail(e.target.value)}
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
                     autoComplete="email"
                     required
                     className={`w-full px-4 py-2 border ${c.input.border} ${c.input.bg} ${c.text.primary} rounded-lg focus:outline-none focus:ring-2 focus:ring-tesa-blue`}
@@ -205,14 +201,14 @@ export function Auth() {
                 </div>
 
                 <div>
-                  <label htmlFor="emergency-password" className={`block text-sm font-medium ${c.text.primary} mb-2`}>
-                    {t.auth.password}
+                  <label htmlFor="login-password" className={`block text-sm font-medium ${c.text.primary} mb-2`}>
+                    Password
                   </label>
                   <input
-                    id="emergency-password"
+                    id="login-password"
                     type="password"
-                    value={emergencyPassword}
-                    onChange={(e) => setEmergencyPassword(e.target.value)}
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
                     autoComplete="current-password"
                     required
                     className={`w-full px-4 py-2 border ${c.input.border} ${c.input.bg} ${c.text.primary} rounded-lg focus:outline-none focus:ring-2 focus:ring-tesa-blue`}
@@ -228,7 +224,7 @@ export function Auth() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+                  className="w-full py-3 bg-tesa-blue text-white rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
                 >
                   {loading ? (
                     <>
@@ -236,7 +232,7 @@ export function Auth() {
                       {t.auth.verifying}
                     </>
                   ) : (
-                    t.auth.emergencySignIn
+                    'Sign In'
                   )}
                 </button>
 

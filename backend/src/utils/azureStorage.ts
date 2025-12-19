@@ -1,7 +1,7 @@
 import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
 
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING || '';
-const containerName = process.env.AZURE_STORAGE_CONTAINER || 'uploads';
+const containerName = process.env.AZURE_STORAGE_CONTAINER || 'legal-documents';
 
 if (!connectionString) {
   console.warn('AZURE_STORAGE_CONNECTION_STRING is not set. Azure Storage operations will fail until it is provided.');

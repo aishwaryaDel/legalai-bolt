@@ -92,6 +92,16 @@ class ApiClient {
     update: (id: string, data: UpdateUserRequest) =>
       this.put<User>(`/api/users/${id}`, data),
     delete: (id: string) => this.delete<void>(`/api/users/${id}`),
+    
+    // Permission management
+    getPermissions: (userId: string) => 
+      this.get<string[]>(`/api/users/${userId}/permissions`),
+    setPermissions: (userId: string, permissions: string[]) => 
+      this.put<void>(`/api/users/${userId}/permissions`, { permissions }),
+    addPermission: (userId: string, permission: string) => 
+      this.post<void>(`/api/users/${userId}/permissions`, { permission }),
+    removePermission: (userId: string, permission: string) => 
+      this.delete<void>(`/api/users/${userId}/permissions/${permission}`),
   };
 
   roles = {
@@ -166,6 +176,18 @@ class ApiClient {
         };
       }
     },
+  };
+
+  documents = {
+    generatePreview: (builderState: any) =>
+      this.post<any>('/api/documents/generate-preview', builderState),
+  };
+
+  auth = {
+    login: (email: string, password: string) =>
+      this.post<{ token: string; user: User }>('/api/auth/login', { email, password }),
+    logout: () => this.post<void>('/api/auth/logout'),
+    getMe: () => this.get<User>('/api/auth/me'),
   };
 }
 

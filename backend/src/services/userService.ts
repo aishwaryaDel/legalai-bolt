@@ -2,6 +2,7 @@
 import { User } from '../models/User';
 import { CreateUserDTO, UpdateUserDTO } from '../types/UserTypes';
 import { userRepository } from '../repository/userRepository';
+import { hashPassword } from '../utils/password';
 
 export class UserService {
   async getAllUsers(): Promise<User[]> {
@@ -25,10 +26,31 @@ export class UserService {
     }
   }
 
+  async getUserByEmail(email: string): Promise<User | null> {
+    try {
+      const user = await userRepository.findByEmail(email);
+      if (!user) {
+        return null;
+      }
+      return user as User;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async createUser(userData: CreateUserDTO): Promise<User> {
     try {
       const { email, password, name, role } = userData;
-      const user = await userRepository.create({ email, password, name, role });
+      
+      // Hash password before storing
+      const hashedPassword = await hashPassword(password);
+      
+      const user = await userRepository.create({ 
+        email, 
+        password: hashedPassword, 
+        name, 
+        role 
+      });
       return user as User;
     } catch (error) {
       throw error;

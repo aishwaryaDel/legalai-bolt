@@ -18,7 +18,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { user, signOut } = useAuth();
+  const { user, signOut, permissions } = useAuth();
   const { locale, setLocale, t } = useLocale();
   const { isDark, toggleTheme } = useTheme();
   const c = useColors(isDark);
@@ -28,7 +28,7 @@ export function Layout({ children }: LayoutProps) {
 
   const mockUser = mockData.demoUser;
 
-  const navItems = [
+  const allNavItems = [
     { path: appRoutes.home, icon: Home, label: t.nav.home },
     { path: appRoutes.legalai, icon: MessageSquare, label: t.nav.copilot },
     { path: appRoutes.review, icon: FileText, label: t.nav.review },
@@ -46,6 +46,10 @@ export function Layout({ children }: LayoutProps) {
     { path: appRoutes.research, icon: BookMarked, label: t.nav.research },
     { path: appRoutes.admin, icon: Settings, label: t.nav.admin },
   ];
+
+  const navItems = permissions
+    ? allNavItems.filter(item => permissions.canAccessRoute(item.path))
+    : allNavItems;
 
   const toggleLocale = () => {
     setLocale(locale === 'en' ? 'de' : 'en');

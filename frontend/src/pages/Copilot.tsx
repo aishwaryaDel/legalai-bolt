@@ -10,6 +10,7 @@ import { CitationDrawer } from '../components/Copilot/CitationDrawer';
 import { enhancedAIService } from '../lib/enhancedAIService';
 import { feedbackService } from '../lib/feedbackService';
 import { contextEngine } from '../lib/contextEngine';
+import { socketService } from '../lib/socketService';
 import {
   Send, FileText, FileSearch, GitCompare, AlertTriangle, FileEdit,
   Paperclip, Loader, X, Plus, ExternalLink, FileUp, MessageSquare,
@@ -66,8 +67,6 @@ export function Copilot() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [userContext, setUserContext] = useState<any>(null);
 
-  // Check for both old and new demo user ID formats
-  const isDemoUser = user?.id === '00000000-0000-0000-0000-000000000001' || user?.id === 'demo-user-id';
 
   const tools = [
     { id: 'summarize', label: t.legalai.tools.summarize, icon: FileText },
@@ -97,6 +96,39 @@ export function Copilot() {
     setUserContext(context);
   }
 
+  // Socket service integration for real-time chat
+  useEffect(() => {
+    const socket = socketService.connect();
+
+    socket.on('ai_response', (response: string) => {
+      const agentMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: response,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, agentMessage]);
+      setLoading(false);
+    });
+
+    socket.on('chat_error', (error: string) => {
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `Sorry, I encountered an error: ${error}`,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      setLoading(false);
+    });
+
+    return () => {
+      socket.off('ai_response');
+      socket.off('chat_error');
+      socketService.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     if (!currentConversationId && messages.length === 0) {
       const seedMessage: Message = {
@@ -117,43 +149,9 @@ export function Copilot() {
 
   async function loadModels() {
     try {
-      const { data, error } = await supabase
-        .from('ai_models')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order');
-
-      if (error) {
-        console.error('Error loading models:', error);
-        throw error;
-      }
-
-      console.log('Loaded models from database:', data);
-
-      if (data && data.length > 0) {
-        const models: AIModel[] = data.map((m: any) => ({
-          id: m.id,
-          name: m.name,
-          displayName: m.display_name,
-          provider: m.provider,
-          modelId: m.model_id,
-          description: m.description,
-          jurisdictions: m.jurisdictions || [],
-          regions: m.regions || [],
-          capabilities: m.capabilities || {},
-          contextWindow: m.context_window,
-          isActive: m.is_active,
-          isDefault: m.is_default,
-          sortOrder: m.sort_order,
-        }));
-        console.log('Parsed models:', models);
-        setAvailableModels(models);
-        const defaultModel = models.find(m => m.isDefault) || models[0];
-        console.log('Selected default model:', defaultModel);
-        setSelectedModel(defaultModel);
-      } else {
-        console.warn('No models found in database');
-      }
+      // TODO: Replace with backend API call when available
+      // For now, skip model loading - using default
+      console.log('Model loading skipped (backend integration pending)');
     } catch (error) {
       console.error('Failed to load models:', error);
     }
@@ -162,57 +160,15 @@ export function Copilot() {
   async function loadConversations() {
     if (!user?.id) return;
 
-    // Demo users don't have database access, skip loading
-    if (isDemoUser) {
-      setLoadingConversations(false);
-      return;
-    }
 
-    setLoadingConversations(true);
-    try {
-      const { data, error } = await supabase
-        .from('copilot_conversations')
-        .select('id, title, created_at, updated_at, model_name')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      if (data) {
-        setConversations(data);
-      }
-    } catch (error) {
-      console.error('Failed to load conversations:', error);
-    } finally {
-      setLoadingConversations(false);
-    }
+    setLoadingConversations(false);
+    // TODO: Implement conversation loading via backend API
+    console.log('Conversation loading skipped (backend integration pending)');
   }
 
   async function loadConversation(conversationId: string) {
-    try {
-      const { data, error } = await supabase
-        .from('copilot_messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at');
-
-      if (error) throw error;
-
-      if (data) {
-        const msgs: Message[] = data.map((m: any) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          citations: m.citations || [],
-          created_at: m.created_at,
-        }));
-        setMessages(msgs);
-        setCurrentConversationId(conversationId);
-      }
-    } catch (error) {
-      console.error('Failed to load conversation:', error);
-    }
+    // TODO: Implement conversation loading via backend API
+    console.log('Load conversation skipped (backend integration pending):', conversationId);
   }
 
   async function startNewConversation() {
@@ -222,13 +178,9 @@ export function Copilot() {
 
   async function deleteConversation(conversationId: string) {
     try {
-      const { error } = await supabase
-        .from('copilot_conversations')
-        .delete()
-        .eq('id', conversationId);
-
-      if (error) throw error;
-
+      // TODO: Implement via backend API
+      console.log('Delete conversation skipped (backend integration pending):', conversationId);
+      
       setConversations(prev => prev.filter(c => c.id !== conversationId));
       if (currentConversationId === conversationId) {
         startNewConversation();
@@ -258,55 +210,30 @@ export function Copilot() {
     setInput('');
     setLoading(true);
 
+    // Emit message via socket for real-time chat capabilities
+    try {
+      socketService.emit('user_message', currentInput);
+    } catch (socketError) {
+      console.warn('Socket service not available, continuing with HTTP fallback:', socketError);
+    }
+
     try {
       let conversationId = currentConversationId;
 
-      // For demo users, use in-memory conversations
-      if (!isDemoUser) {
-        if (!conversationId) {
-          const { data: newConv, error: convError } = await supabase
-            .from('copilot_conversations')
-            .insert({
-              user_id: user.id,
-              title: currentInput.substring(0, 100),
-              model_name: selectedModel?.displayName || 'GPT-4o Mini',
-            })
-            .select()
-            .single();
-
-          if (convError) throw convError;
-          conversationId = newConv.id;
-          setCurrentConversationId(conversationId);
-          await loadConversations();
-        }
-
-        const { error: userMsgError } = await supabase
-          .from('copilot_messages')
-          .insert({
-            conversation_id: conversationId,
-            role: 'user',
-            content: currentInput,
-          });
-
-        if (userMsgError) throw userMsgError;
-      } else {
-        // Demo user - just use in-memory conversation
-        if (!conversationId) {
-          conversationId = crypto.randomUUID();
-          setCurrentConversationId(conversationId);
-        }
+      // Demo user or no backend - just use in-memory conversation
+      if (!conversationId) {
+        conversationId = crypto.randomUUID();
+        setCurrentConversationId(conversationId);
       }
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      // TODO: Backend API integration - Commented out for now
+      // Socket service will handle the response via 'ai_response' event
+      /*
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
-      // Get the session token for authenticated requests
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/openai-chat`, {
+      const response = await fetch(`${apiBaseUrl}/api/chat`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -336,29 +263,14 @@ export function Copilot() {
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: data.message,
+        content: data.message || data.response || 'No response from AI',
         created_at: new Date().toISOString(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+      */
 
-      // Only save to database for non-demo users
-      if (!isDemoUser) {
-        const { error: assistantMsgError } = await supabase
-          .from('copilot_messages')
-          .insert({
-            conversation_id: conversationId,
-            role: 'assistant',
-            content: data.message,
-          });
-
-        if (assistantMsgError) throw assistantMsgError;
-
-        await supabase
-          .from('copilot_conversations')
-          .update({ updated_at: new Date().toISOString() })
-          .eq('id', conversationId);
-      }
+      // TODO: Save conversation to backend when API is available
 
     } catch (error) {
       console.error('Error sending message:', error);

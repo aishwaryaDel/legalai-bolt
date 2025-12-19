@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, AlertTriangle, Download, Save, FileText, AlertCircle } from 'lucide-react';
+import { apiClient } from '../../lib/apiClient';
 
 interface ValidationFlag {
   type: string;
@@ -33,12 +34,28 @@ export function Step4ReviewGenerate({ builderState, onSave, onExport, isDark }: 
     console.log('[Step4] generateDocumentPreview started');
     setGenerating(true);
     try {
-      console.log('[Step4] Building preview HTML');
+      console.log('[Step4] Calling backend API with builderState');
+      console.log('[Step4] BuilderState payload:', JSON.stringify(builderState, null, 2));
+
+      const response = await apiClient.documents.generatePreview(builderState);
+
+      console.log('[Step4] API Response:', response);
+
+      if (response.success) {
+        console.log('[Step4] ✅ Backend received payload successfully!');
+        console.log('[Step4] Response data:', response.data);
+        console.log('[Step4] Summary:', response.data?.summary);
+      } else {
+        console.error('[Step4] ❌ API call failed:', response.error);
+      }
+
+      console.log('[Step4] Building preview HTML (temporary frontend generation)');
       let html = `
         <div style="font-family: 'Times New Roman', serif; max-width: 800px; margin: 0 auto; line-height: 1.6;">
           <div style="text-align: center; margin-bottom: 40px;">
             <h1 style="font-size: 24px; margin-bottom: 10px;">${builderState.document_type || 'DOCUMENT'}</h1>
             <p style="font-size: 14px; color: #666;">Effective Date: ${builderState.effective_date || new Date().toLocaleDateString()}</p>
+            ${response.success ? `<p style="font-size: 12px; color: #28a745; margin-top: 10px;">✅ Backend API Connected</p>` : ''}
           </div>
 
           <div style="margin-bottom: 30px;">
@@ -49,42 +66,21 @@ export function Step4ReviewGenerate({ builderState, onSave, onExport, isDark }: 
               : `<p><strong>Counterparty:</strong> ${builderState.counterparty_name || '[Counterparty]'}</p>`
             }
           </div>
-      `;
 
-      const selectedClauses = builderState.selected_clauses || {};
-      const sectionIds = Object.keys(selectedClauses);
+          <div style="margin-bottom: 30px; padding: 20px; background-color: #f0f9ff; border-left: 4px solid #0284c7;">
+            <h3 style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #0369a1;">API Integration Status</h3>
+            <p style="font-size: 12px; margin-bottom: 5px;">Selected Clauses: ${Object.keys(builderState.selected_clauses || {}).length}</p>
+            <p style="font-size: 12px; margin-bottom: 5px;">Document Type: ${builderState.document_type}</p>
+            <p style="font-size: 12px; margin-bottom: 5px;">Jurisdiction: ${builderState.jurisdiction}</p>
+            ${response.success ? `<p style="font-size: 12px; color: #16a34a; font-weight: bold;">Backend Response: ${response.data?.message}</p>` : ''}
+          </div>
 
-      console.log('[Step4] selectedClauses:', selectedClauses);
-      console.log('[Step4] sectionIds:', sectionIds);
-      console.log('[Step4] Number of sections:', sectionIds.length);
+          <div style="margin-bottom: 30px;">
+            <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 15px;">SELECTED CLAUSES</h2>
+            <p style="font-style: italic; color: #666;">Clause content will be generated here once backend integration is complete.</p>
+            <p style="font-size: 12px; margin-top: 10px;">Number of clauses: ${Object.keys(builderState.selected_clauses || {}).length}</p>
+          </div>
 
-      for (let i = 0; i < sectionIds.length; i++) {
-        const sectionId = sectionIds[i];
-        const clauseId = selectedClauses[sectionId];
-
-        const { data: section } = await supabase
-          .from('template_sections')
-          .select('name')
-          .eq('id', sectionId)
-          .maybeSingle();
-
-        const { data: clause } = await supabase
-          .from('clauses')
-          .select('full_legal_text')
-          .eq('id', clauseId)
-          .maybeSingle();
-
-        if (section && clause) {
-          html += `
-            <div style="margin-bottom: 30px;">
-              <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 15px;">${i + 1}. ${section.name.toUpperCase()}</h2>
-              <p style="text-align: justify;">${clause.full_legal_text || '[Clause text not available]'}</p>
-            </div>
-          `;
-        }
-      }
-
-      html += `
           <div style="margin-top: 60px; border-top: 2px solid #000; padding-top: 30px;">
             <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 20px;">SIGNATURES</h2>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px;">

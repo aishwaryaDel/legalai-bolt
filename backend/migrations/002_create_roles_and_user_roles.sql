@@ -19,13 +19,7 @@
       - `assigned_by` (uuid) - User ID who assigned this role
       - `is_active` (boolean) - Whether this assignment is active
 
-  2. Security
-    - Enable RLS on both tables
-    - Add policies for authenticated users to read roles
-    - Add policies for platform administrators to manage roles
-    - Add policies for managing user-role mappings
-
-  3. Important Notes
+  2. Important Notes
     - Four predefined roles: Platform Administrator, Legal Admin, Department Admin, Department User
     - User-role mapping allows multiple roles per user
     - Uses UUID for all primary and foreign keys
@@ -60,58 +54,6 @@ CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_roles_role_id ON user_roles(role_id);
 CREATE INDEX IF NOT EXISTS idx_user_roles_is_active ON user_roles(is_active);
 
-ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Anyone can read active roles"
-  ON roles
-  FOR SELECT
-  TO authenticated
-  USING (is_active = true);
-
-CREATE POLICY "Authenticated users can create roles"
-  ON roles
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
-
-CREATE POLICY "Authenticated users can update roles"
-  ON roles
-  FOR UPDATE
-  TO authenticated
-  USING (true)
-  WITH CHECK (true);
-
-CREATE POLICY "Authenticated users can delete roles"
-  ON roles
-  FOR DELETE
-  TO authenticated
-  USING (true);
-
-CREATE POLICY "Users can read their own role assignments"
-  ON user_roles
-  FOR SELECT
-  TO authenticated
-  USING (user_id = auth.uid() OR true);
-
-CREATE POLICY "Authenticated users can create user role assignments"
-  ON user_roles
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
-
-CREATE POLICY "Authenticated users can update user role assignments"
-  ON user_roles
-  FOR UPDATE
-  TO authenticated
-  USING (true)
-  WITH CHECK (true);
-
-CREATE POLICY "Authenticated users can delete user role assignments"
-  ON user_roles
-  FOR DELETE
-  TO authenticated
-  USING (true);
 
 INSERT INTO roles (name, description, permissions) VALUES
   ('Platform Administrator', 'Full system access with ability to manage all users, roles, and system settings',

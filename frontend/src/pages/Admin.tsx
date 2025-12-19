@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useColors } from '../lib/colors';
 import { useAuth } from '../contexts/AuthContext';
-import { aiModels } from '../lib/config';
-import { securityService } from '../lib/securityService';
+import { aiModels, appRoutes } from '../lib/config';
+import { apiClient } from '../lib/apiClient';
+import type { User } from '../types/api';
 import {
-  Settings, Database, Key, Users, Shield, DollarSign, FileText,
-  Activity, AlertTriangle, CheckCircle, Clock, Search, Filter,
-  Download, Eye, Lock, Unlock
+  Database, Users, Shield, DollarSign,
+  Activity, AlertTriangle, CheckCircle, Clock, Search,
+  Download, Eye, Lock, Unlock, Plus, X, Edit2, Save
 } from 'lucide-react';
 
 interface AuditLog {
@@ -23,13 +24,31 @@ interface AuditLog {
   users?: { email: string };
 }
 
-interface UserRole {
-  id: string;
-  email: string;
-  role: string;
+interface UserWithPermissions extends User {
   permissions: string[];
-  last_login: string;
 }
+
+// Available routes/tabs that can be assigned as permissions
+const availablePermissions = [
+  { id: 'home', label: 'Home', route: appRoutes.home },
+  { id: 'legalai', label: 'Legal AI', route: appRoutes.legalai },
+  { id: 'review', label: 'Review', route: appRoutes.review },
+  { id: 'draft', label: 'Draft', route: appRoutes.draft },
+  { id: 'builder', label: 'Builder', route: appRoutes.builder },
+  { id: 'repository', label: 'Repository', route: appRoutes.repository },
+  { id: 'intake', label: 'Intake', route: appRoutes.intake },
+  { id: 'search', label: 'Search', route: appRoutes.search },
+  { id: 'clauses', label: 'Clauses', route: appRoutes.clauses },
+  { id: 'playbooks', label: 'Playbooks', route: appRoutes.playbooks },
+  { id: 'workflows', label: 'Workflows', route: appRoutes.workflows },
+  { id: 'analytics', label: 'Analytics', route: appRoutes.analytics },
+  { id: 'partners', label: 'Partners', route: appRoutes.partners },
+  { id: 'discovery', label: 'Discovery', route: appRoutes.discovery },
+  { id: 'research', label: 'Research', route: appRoutes.research },
+  { id: 'admin', label: 'Admin', route: appRoutes.admin },
+  { id: 'settings', label: 'Settings', route: appRoutes.settings },
+  { id: 'help', label: 'Help', route: appRoutes.help },
+];
 
 export function Admin() {
   const { isDark } = useTheme();
@@ -37,10 +56,17 @@ export function Admin() {
   const c = useColors(isDark);
   const [tab, setTab] = useState('audit');
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [users, setUsers] = useState<UserWithPermissions[]>([]);
   const [loading, setLoading] = useState(false);
   const [filterAction, setFilterAction] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editingPermissions, setEditingPermissions] = useState<string[]>([]);
+  const [editingRole, setEditingRole] = useState<string>('');
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserRole, setNewUserRole] = useState('viewer');
+  const [newUserPermissions, setNewUserPermissions] = useState<string[]>([]);
 
   const tabs = [
     { id: 'audit', label: 'Audit Logs', icon: Activity },
@@ -56,7 +82,7 @@ export function Admin() {
       if (tab === 'audit') {
         loadAuditLogs();
       } else if (tab === 'roles') {
-        loadUserRoles();
+        loadUsers();
       }
     }
   }, [tab, user]);
@@ -64,19 +90,9 @@ export function Admin() {
   async function loadAuditLogs() {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('audit_logs')
-        .select(`
-          *,
-          users:user_id (email)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (error) throw error;
-      if (data) {
-        setAuditLogs(data);
-      }
+      // In a real implementation, this would query audit_logs
+      // For now, showing empty state
+      setAuditLogs([]);
     } catch (error) {
       console.error('Error loading audit logs:', error);
     } finally {
@@ -84,29 +100,133 @@ export function Admin() {
     }
   }
 
-  async function loadUserRoles() {
+  async function loadUsers() {
     setLoading(true);
     try {
-      // In a real implementation, this would query a user_roles table
-      // For now, we'll show a placeholder structure
-      setUserRoles([
-        {
-          id: '1',
-          email: 'admin@tesa.com',
-          role: 'Admin',
-          permissions: ['all'],
-          last_login: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          email: 'legal@tesa.com',
-          role: 'Legal User',
-          permissions: ['review', 'draft', 'copilot'],
-          last_login: new Date().toISOString(),
-        },
-      ]);
+      const response = await apiClient.users.getAll();
+      if (response.success && response.data) {
+        // Load each user's custom permissions from the database
+        const usersWithPerms: UserWithPermissions[] = await Promise.all(
+          response.data.map(async (u) => {
+            try {
+              const permResponse = await apiClient.users.getPermissions(u.id);
+              const customPermissions = permResponse.success && permResponse.data 
+                ? permResponse.data 
+                : [];
+              
+              // Use custom permissions if available, otherwise fall back to role-based
+              const permissions = customPermissions.length > 0 
+                ? customPermissions 
+                : getRolePermissions(u.role || 'viewer');
+                
+              return {
+                ...u,
+                permissions,
+              };
+            } catch (error) {
+              console.error(`Error loading permissions for user ${u.id}:`, error);
+              return {
+                ...u,
+                permissions: getRolePermissions(u.role || 'viewer'),
+              };
+            }
+          })
+        );
+        setUsers(usersWithPerms);
+      }
     } catch (error) {
-      console.error('Error loading user roles:', error);
+      console.error('Error loading users:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Get default permissions for a role
+  function getRolePermissions(role: string): string[] {
+    const roleMap: Record<string, string[]> = {
+      admin: availablePermissions.map(p => p.id),
+      viewer: ['home', 'legalai', 'review', 'draft', 'builder', 'repository', 'search', 'discovery', 'research', 'settings', 'help'],
+    };
+    return roleMap[role.toLowerCase()] || roleMap.viewer;
+  }
+
+  // Toggle permission for editing user
+  function togglePermission(permissionId: string) {
+    setEditingPermissions(prev =>
+      prev.includes(permissionId)
+        ? prev.filter(p => p !== permissionId)
+        : [...prev, permissionId]
+    );
+  }
+
+  // Start editing a user
+  function startEditUser(user: UserWithPermissions) {
+    setEditingUserId(user.id);
+    setEditingRole(user.role || 'viewer');
+    setEditingPermissions(user.permissions);
+  }
+
+  // Cancel editing
+  function cancelEdit() {
+    setEditingUserId(null);
+    setEditingRole('');
+    setEditingPermissions([]);
+  }
+
+  // Save user changes
+  async function saveUser(userId: string) {
+    try {
+      setLoading(true);
+      
+      // Update user role
+      await apiClient.users.update(userId, {
+        role: editingRole,
+      });
+      
+      // Save custom permissions
+      await apiClient.users.setPermissions(userId, editingPermissions);
+      
+      await loadUsers();
+      cancelEdit();
+    } catch (error) {
+      console.error('Error saving user:', error);
+      alert('Failed to save user changes');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Add new user
+  async function addUser() {
+    if (!newUserEmail) {
+      alert('Please enter an email');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Create the user
+      const response = await apiClient.users.create({
+        email: newUserEmail,
+        first_name: newUserEmail.split('@')[0],
+        password: 'TempPassword123!', // Should be changed on first login
+        role: newUserRole,
+      });
+      
+      // If user created successfully and has custom permissions, save them
+      if (response.success && response.data && newUserPermissions.length > 0) {
+        await apiClient.users.setPermissions(response.data.id, newUserPermissions);
+      }
+      
+      await loadUsers();
+      setShowAddUser(false);
+      setNewUserEmail('');
+      setNewUserRole('viewer');
+      setNewUserPermissions([]);
+    } catch (error) {
+      console.error('Error adding user:', error);
+      alert('Failed to add user');
     } finally {
       setLoading(false);
     }
@@ -318,55 +438,231 @@ export function Admin() {
 
           {tab === 'roles' && (
             <div>
-              <div className="mb-6">
-                <h2 className={`text-xl font-semibold ${c.text.primary} mb-2`}>Roles & Permissions (RBAC/ABAC)</h2>
-                <p className={`text-sm ${c.text.secondary}`}>
-                  Role-Based and Attribute-Based Access Control by module and contract type
-                </p>
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h2 className={`text-xl font-semibold ${c.text.primary} mb-2`}>Roles & Permissions (RBAC)</h2>
+                  <p className={`text-sm ${c.text.secondary}`}>
+                    Manage user access to specific features and modules
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAddUser(true)}
+                  className="px-4 py-2 bg-tesa-blue text-white rounded-lg hover:brightness-110 transition-all font-medium flex items-center gap-2"
+                >
+                  <Plus size={18} />
+                  Add User
+                </button>
               </div>
 
-              <div className="space-y-4">
-                {userRoles.map((userRole) => (
-                  <div
-                    key={userRole.id}
-                    className={`border ${c.border.primary} rounded-lg p-4`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 ${c.bg.tertiary} rounded-full flex items-center justify-center`}>
-                          <Users size={20} className={c.text.secondary} />
-                        </div>
-                        <div>
-                          <div className={`font-medium ${c.text.primary}`}>{userRole.email}</div>
-                          <div className={`text-sm ${c.text.secondary}`}>{userRole.role}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button className={`px-3 py-1.5 text-sm ${c.bg.tertiary} rounded hover:bg-opacity-80 transition-colors`}>
-                          Edit
-                        </button>
-                        <button className={`p-1.5 ${c.bg.hover} rounded transition-colors`}>
-                          {userRole.role === 'Admin' ? (
-                            <Lock size={16} className="text-green-600" />
-                          ) : (
-                            <Unlock size={16} className={c.text.muted} />
-                          )}
-                        </button>
+              {showAddUser && (
+                <div className={`mb-6 border ${c.border.primary} rounded-lg p-6 ${c.bg.tertiary}`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className={`font-semibold ${c.text.primary}`}>Add New User</h3>
+                    <button onClick={() => setShowAddUser(false)} className={`p-1 ${c.bg.hover} rounded`}>
+                      <X size={18} className={c.text.secondary} />
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className={`block text-sm font-medium ${c.text.primary} mb-2`}>Email</label>
+                      <input
+                        type="email"
+                        value={newUserEmail}
+                        onChange={(e) => setNewUserEmail(e.target.value)}
+                        placeholder="user@tesa.com"
+                        className={`w-full px-4 py-2 border ${c.input.border} ${c.input.bg} rounded-lg`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium ${c.text.primary} mb-2`}>Role</label>
+                      <select
+                        value={newUserRole}
+                        onChange={(e) => {
+                          setNewUserRole(e.target.value);
+                          setNewUserPermissions(getRolePermissions(e.target.value));
+                        }}
+                        className={`w-full px-4 py-2 border ${c.input.border} ${c.input.bg} rounded-lg`}
+                      >
+                        <option value="admin">Admin - Full Access</option>
+                        <option value="viewer">Viewer - Limited Access</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium ${c.text.primary} mb-2`}>Permissions (Accessible Tabs)</label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 border ${c.border.primary} rounded-lg">
+                        {availablePermissions.map(perm => (
+                          <label key={perm.id} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={newUserPermissions.includes(perm.id)}
+                              onChange={() => {
+                                setNewUserPermissions(prev =>
+                                  prev.includes(perm.id)
+                                    ? prev.filter(p => p !== perm.id)
+                                    : [...prev, perm.id]
+                                );
+                              }}
+                              className="rounded text-tesa-blue"
+                            />
+                            <span className={`text-sm ${c.text.primary}`}>{perm.label}</span>
+                          </label>
+                        ))}
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {userRole.permissions.map((perm) => (
-                        <span
-                          key={perm}
-                          className={`text-xs px-2 py-1 rounded ${c.badge.info.bg} ${c.badge.info.text}`}
-                        >
-                          {perm}
-                        </span>
-                      ))}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={addUser}
+                        disabled={loading}
+                        className="px-4 py-2 bg-tesa-blue text-white rounded-lg hover:brightness-110 transition-all font-medium disabled:opacity-50"
+                      >
+                        {loading ? 'Adding...' : 'Add User'}
+                      </button>
+                      <button
+                        onClick={() => setShowAddUser(false)}
+                        className={`px-4 py-2 border ${c.border.primary} rounded-lg ${c.bg.hover} transition-colors`}
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {loading && users.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-tesa-blue"></div>
+                  <p className={`mt-2 text-sm ${c.text.secondary}`}>Loading users...</p>
+                </div>
+              ) : users.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users size={48} className={`mx-auto mb-4 ${c.text.muted}`} />
+                  <p className={`text-lg font-medium ${c.text.primary}`}>No users found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {users.map((userItem) => (
+                    <div
+                      key={userItem.id}
+                      className={`border ${c.border.primary} rounded-lg p-4`}
+                    >
+                      {editingUserId === userItem.id ? (
+                        // Edit mode
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 ${c.bg.tertiary} rounded-full flex items-center justify-center`}>
+                                <Users size={20} className={c.text.secondary} />
+                              </div>
+                              <div>
+                                <div className={`font-medium ${c.text.primary}`}>{userItem.email}</div>
+                                <select
+                                  value={editingRole}
+                                  onChange={(e) => {
+                                    setEditingRole(e.target.value);
+                                    setEditingPermissions(getRolePermissions(e.target.value));
+                                  }}
+                                  className={`text-sm px-2 py-1 border ${c.input.border} ${c.input.bg} rounded`}
+                                >
+                                  <option value="admin">Admin</option>
+                                  <option value="viewer">Viewer</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => saveUser(userItem.id)}
+                                disabled={loading}
+                                className="px-3 py-1.5 text-sm bg-tesa-blue text-white rounded hover:brightness-110 transition-all flex items-center gap-1 disabled:opacity-50"
+                              >
+                                <Save size={14} />
+                                Save
+                              </button>
+                              <button
+                                onClick={cancelEdit}
+                                className={`px-3 py-1.5 text-sm ${c.bg.tertiary} rounded hover:bg-opacity-80 transition-colors`}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <label className={`block text-sm font-medium ${c.text.primary} mb-2`}>
+                              Accessible Tabs (Permissions)
+                            </label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-64 overflow-y-auto p-3 border ${c.border.primary} rounded-lg ${c.bg.tertiary}">
+                              {availablePermissions.map(perm => (
+                                <label key={perm.id} className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={editingPermissions.includes(perm.id)}
+                                    onChange={() => togglePermission(perm.id)}
+                                    className="rounded text-tesa-blue"
+                                  />
+                                  <span className={`text-sm ${c.text.primary}`}>{perm.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                            <p className={`text-xs ${c.text.muted} mt-2`}>
+                              Selected: {editingPermissions.length} of {availablePermissions.length} tabs
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        // View mode
+                        <>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 ${c.bg.tertiary} rounded-full flex items-center justify-center`}>
+                                <Users size={20} className={c.text.secondary} />
+                              </div>
+                              <div>
+                                <div className={`font-medium ${c.text.primary}`}>{userItem.email}</div>
+                                <div className={`text-sm ${c.text.secondary}`}>
+                                  {userItem.role === 'admin' ? 'Platform Administrator' : 'Viewer'}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => startEditUser(userItem)}
+                                className={`px-3 py-1.5 text-sm ${c.bg.tertiary} rounded hover:bg-opacity-80 transition-colors flex items-center gap-1`}
+                              >
+                                <Edit2 size={14} />
+                                Edit
+                              </button>
+                              <div className={`p-1.5 ${c.bg.hover} rounded`}>
+                                {userItem.role === 'admin' ? (
+                                  <Lock size={16} className="text-green-600" />
+                                ) : (
+                                  <Unlock size={16} className={c.text.muted} />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className={`text-xs font-medium ${c.text.secondary} mb-2`}>
+                              Accessible Tabs ({userItem.permissions.length})
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {userItem.permissions.map((perm) => {
+                                const permDetail = availablePermissions.find(p => p.id === perm);
+                                return (
+                                  <span
+                                    key={perm}
+                                    className={`text-xs px-2 py-1 rounded ${c.badge.info.bg} ${c.badge.info.text}`}
+                                  >
+                                    {permDetail?.label || perm}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
