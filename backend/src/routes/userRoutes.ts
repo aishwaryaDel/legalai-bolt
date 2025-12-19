@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { userController } from '../controllers/userController';
+import { userPermissionController } from '../controllers/userPermissionController';
 
 const router = Router();
 
@@ -31,6 +32,15 @@ router.post('/', (req, res) => userController.createUser(req, res));
 router.put('/:id', (req, res) => userController.updateUser(req, res));
 
 router.delete('/:id',  (req, res) => userController.deleteUser(req, res));
+
+// User permission routes
+router.get('/:userId/permissions', (req, res) => userPermissionController.getUserPermissions(req, res));
+
+router.put('/:userId/permissions', (req, res) => userPermissionController.setUserPermissions(req, res));
+
+router.post('/:userId/permissions', (req, res) => userPermissionController.addUserPermission(req, res));
+
+router.delete('/:userId/permissions/:permission', (req, res) => userPermissionController.removeUserPermission(req, res));
 
 export default router;
 

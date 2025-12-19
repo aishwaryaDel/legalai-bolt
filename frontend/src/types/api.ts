@@ -61,6 +61,7 @@ export interface CreateUserRequest {
   first_name?: string;
   last_name?: string;
   is_active?: boolean;
+  role?: string;
 }
 
 export interface UpdateUserRequest {
@@ -69,6 +70,7 @@ export interface UpdateUserRequest {
   first_name?: string;
   last_name?: string;
   is_active?: boolean;
+  role?: string;
 }
 
 export interface CreateRoleRequest {

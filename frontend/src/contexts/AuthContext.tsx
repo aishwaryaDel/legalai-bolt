@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { mockData } from '../lib/config';
 import { apiClient } from '../lib/apiClient';
-import { createPermissionChecker, createPermissionCheckerFromRole, PermissionChecker } from '../lib/permissions';
+import { createPermissionChecker, createPermissionCheckerFromRole, createPermissionCheckerFromKeys, PermissionChecker } from '../lib/permissions';
 import type { User, UserRole } from '../types/api';
 
 interface AuthContextType {
@@ -73,6 +73,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (response.success && response.data) {
             setUser(response.data);
             
+            // Try to load custom permissions from database
+            if (response.data.id) {
+              try {
+                const permResponse = await apiClient.users.getPermissions(response.data.id);
+                if (permResponse.success && permResponse.data && permResponse.data.length > 0) {
+                  // User has custom permissions, use simple route-based checker
+                  const customPermissions = createPermissionCheckerFromKeys(permResponse.data);
+                  setPermissions(customPermissions);
+                  setUserRoles([]);
+                  setLoading(false);
+                  return;
+                }
+              } catch (permError) {
+                console.warn('Could not load custom permissions, using role-based:', permError);
+              }
+            }
+            
             // If user has a role field, use it directly for permissions
             if (response.data.role) {
               const rolePermissions = createPermissionCheckerFromRole(response.data.role);
@@ -116,6 +133,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Set user
       setUser(userData);
+
+      // Try to load custom permissions from database
+      if (userData.id) {
+        try {
+          const permResponse = await apiClient.users.getPermissions(userData.id);
+          if (permResponse.success && permResponse.data && permResponse.data.length > 0) {
+            // User has custom permissions, use simple route-based checker
+            const customPermissions = createPermissionCheckerFromKeys(permResponse.data);
+            setPermissions(customPermissions);
+            setUserRoles([]);
+            return;
+          }
+        } catch (permError) {
+          console.warn('Could not load custom permissions, using role-based:', permError);
+        }
+      }
 
       // If user has a role field, use it directly for permissions
       if (userData.role) {

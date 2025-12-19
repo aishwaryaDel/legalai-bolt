@@ -1,4 +1,4 @@
-import { Role, UserRole } from '../types/api';
+import { UserRole } from '../types/api';
 import { appRoutes } from './config';
 
 export enum Permission {
@@ -330,4 +330,68 @@ export function getAccessibleRoutes(userRoles: UserRole[]): string[] {
 export function filterRoutesByPermission(routes: RoutePermission[], userRoles: UserRole[]): RoutePermission[] {
   const checker = createPermissionChecker(userRoles);
   return routes.filter(route => checker.canAccessRoute(route.path));
+}
+
+/**
+ * Create a permission checker from simple route permission keys (like 'home', 'legalai')
+ * This is used when loading custom permissions from the user_permissions table
+ */
+export function createPermissionCheckerFromKeys(permissionKeys: string[]): PermissionChecker {
+  // Map route keys to actual route paths
+  const routeKeyMap: Record<string, string> = {
+    home: appRoutes.home,
+    legalai: appRoutes.legalai,
+    review: appRoutes.review,
+    draft: appRoutes.draft,
+    builder: appRoutes.builder,
+    repository: appRoutes.repository,
+    intake: appRoutes.intake,
+    search: appRoutes.search,
+    clauses: appRoutes.clauses,
+    playbooks: appRoutes.playbooks,
+    workflows: appRoutes.workflows,
+    analytics: appRoutes.analytics,
+    partners: appRoutes.partners,
+    discovery: appRoutes.discovery,
+    research: appRoutes.research,
+    admin: appRoutes.admin,
+    settings: appRoutes.settings,
+    help: appRoutes.help,
+  };
+
+  // Get all route paths that the user has access to
+  const allowedRoutes = permissionKeys
+    .map(key => routeKeyMap[key])
+    .filter(Boolean);
+
+  // Create a custom permission checker that checks if route is in allowed list
+  class SimplePermissionChecker extends PermissionChecker {
+    constructor() {
+      // Create a mock UserRole with a permissive role
+      super([{
+        id: 'custom',
+        user_id: 'custom',
+        role_id: 'custom',
+        is_active: true,
+        role: {
+          id: 'custom',
+          name: 'Custom',
+          is_active: true,
+          permissions: {
+            documents: { create: true, read: true, update: true, delete: true },
+            contracts: { create: true, read: true, update: true, delete: true, approve: true, submit: true },
+            team: { view: true, manage: true, assign: true },
+            analytics: { view: true },
+          },
+        },
+      }]);
+    }
+
+    canAccessRoute(routePath: string): boolean {
+      // Check if the route is in the allowed routes list
+      return allowedRoutes.includes(routePath);
+    }
+  }
+
+  return new SimplePermissionChecker();
 }
