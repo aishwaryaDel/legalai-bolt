@@ -183,6 +183,21 @@ class ApiClient {
       this.post<any>('/api/documents/generate-preview', builderState),
   };
 
+  helpdeskQuestions = {
+    create: (question: string) =>
+      this.post<any>('/api/helpdesk-questions', { question }),
+    getMyQuestions: () =>
+      this.get<any[]>('/api/helpdesk-questions/my-questions'),
+    getAll: () =>
+      this.get<any[]>('/api/helpdesk-questions/all'),
+    getById: (id: string) =>
+      this.get<any>(`/api/helpdesk-questions/${id}`),
+    update: (id: string, data: { status?: string; response?: string }) =>
+      this.put<any>(`/api/helpdesk-questions/${id}`, data),
+    delete: (id: string) =>
+      this.delete<void>(`/api/helpdesk-questions/${id}`),
+  };
+
   auth = {
     login: (email: string, password: string) =>
       this.post<{ token: string; user: User }>('/api/auth/login', { email, password }),

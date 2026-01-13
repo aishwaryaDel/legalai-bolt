@@ -5,6 +5,7 @@ import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import fileRoutes from './routes/fileRoutes';
 import documentRoutes from './routes/documentRoutes';
+import helpdeskQuestionRoutes from './routes/helpdeskQuestionRoutes';
 import { errorHandler } from './middlewares/errorHandler';
 import { authMiddleware } from './middlewares/authMiddleware';
  
@@ -29,6 +30,7 @@ app.get('/', (req, res) => {
 app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/files', authMiddleware, fileRoutes);
 app.use('/api/documents', authMiddleware, documentRoutes);
+app.use('/api/helpdesk-questions', authMiddleware, helpdeskQuestionRoutes);
  
 // Centralized error handler middleware (should be last)
 app.use(errorHandler);

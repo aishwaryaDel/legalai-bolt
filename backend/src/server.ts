@@ -5,6 +5,7 @@ import app from './app';
 import { swaggerUi, swaggerSpec } from './config/swagger';
 import { initChatService } from './services/chatService';
 import { setupChatController } from './controllers/chatController';
+import './models/associations';
 
 dotenv.config();
 

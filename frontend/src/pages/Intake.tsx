@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLocale } from '../contexts/LocaleContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Upload, CheckCircle, Loader, FileText, Send, X, AlertCircle } from 'lucide-react';
+import { Upload, CheckCircle, Loader, FileText, Send, X, AlertCircle, MessageSquare, Clock } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
 
 interface UploadedFile {
@@ -10,6 +10,18 @@ interface UploadedFile {
   size: number;
   url: string;
   uploadedAt: Date;
+}
+
+interface HelpdeskQuestion {
+  id: string;
+  userId: string;
+  question: string;
+  status: 'pending' | 'in_progress' | 'resolved' | 'closed';
+  response?: string;
+  respondedBy?: string;
+  respondedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 type DirectoryType = 'legal' | 'procurement' | 'hr' | 'shared';
@@ -26,7 +38,30 @@ export function Intake() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedDirectory, setSelectedDirectory] = useState<DirectoryType>('legal');
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [questions, setQuestions] = useState<HelpdeskQuestion[]>([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (tab === 'requests') {
+      loadQuestions();
+    }
+  }, [tab]);
+
+  async function loadQuestions() {
+    setLoadingQuestions(true);
+    try {
+      const result = await apiClient.helpdeskQuestions.getMyQuestions();
+      if (result.success && result.data) {
+        setQuestions(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading questions:', error);
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }
 
   async function handleFileUpload(file: File, directory: DirectoryType) {
     if (!file) return;
@@ -101,13 +136,46 @@ export function Intake() {
     if (!user || !question.trim()) return;
 
     setSubmitting(true);
+    setSubmitSuccess(false);
 
-    setTimeout(() => {
+    try {
+      const result = await apiClient.helpdeskQuestions.create(question.trim());
+
+      if (result.success) {
+        setQuestion('');
+        setSubmitSuccess(true);
+        setTimeout(() => {
+          setSubmitSuccess(false);
+          setTab('requests');
+        }, 2000);
+      } else {
+        alert(result.error || 'Failed to submit question. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting question:', error);
+      alert('Failed to submit question. Please try again.');
+    } finally {
       setSubmitting(false);
-      alert(`Question submitted successfully!\nQuestion: ${question.trim()}`);
-      setQuestion('');
-      setTab('requests');
-    }, 1000);
+    }
+  }
+
+  function getStatusColor(status: string) {
+    switch (status) {
+      case 'pending':
+        return isDark ? 'bg-yellow-900/30 text-yellow-400 border-yellow-700' : 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'in_progress':
+        return isDark ? 'bg-blue-900/30 text-blue-400 border-blue-700' : 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'resolved':
+        return isDark ? 'bg-green-900/30 text-green-400 border-green-700' : 'bg-green-100 text-green-800 border-green-300';
+      case 'closed':
+        return isDark ? 'bg-gray-900/30 text-gray-400 border-gray-700' : 'bg-gray-100 text-gray-800 border-gray-300';
+      default:
+        return isDark ? 'bg-slate-900/30 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-800 border-slate-300';
+    }
+  }
+
+  function formatStatus(status: string) {
+    return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }
 
   return (
@@ -269,58 +337,132 @@ export function Intake() {
 
       {tab === 'ask' && (
         <div className={`${isDark ? "bg-slate-800/50 border-slate-700 backdrop-blur-sm" : "bg-white"} rounded-lg border p-8`}>
-          <div className="max-w-3xl mx-auto">
-            <div className="mb-6">
-              <h2 className={`text-xl font-semibold ${isDark ? "text-white" : "text-slate-900"} mb-2`}>
-                Ask the Legal Helpdesk
+          {submitSuccess ? (
+            <div className="max-w-3xl mx-auto text-center py-12">
+              <CheckCircle size={64} className="mx-auto mb-4 text-green-600" />
+              <h2 className={`text-2xl font-bold ${isDark ? "text-white" : "text-slate-900"} mb-4`}>
+                Question Submitted Successfully
               </h2>
-              <p className={`${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                Submit questions to the legal team for guidance on contracts, compliance, or general legal matters.
+              <p className={`${isDark ? "text-slate-400" : "text-slate-600"} mb-6`}>
+                Your question has been submitted to the legal helpdesk. You will receive a response within 1-2 business days.
+              </p>
+              <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                Redirecting to your requests...
               </p>
             </div>
+          ) : (
+            <div className="max-w-3xl mx-auto">
+              <div className="mb-6">
+                <h2 className={`text-xl font-semibold ${isDark ? "text-white" : "text-slate-900"} mb-2`}>
+                  Ask the Legal Helpdesk
+                </h2>
+                <p className={`${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  Submit questions to the legal team for guidance on contracts, compliance, or general legal matters.
+                </p>
+              </div>
 
-            <div className="mb-4">
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                Your Question *
-              </label>
-              <textarea
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                className={`w-full p-4 border rounded-lg ${isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'border-slate-300 placeholder-slate-400'}`}
-                rows={6}
-                placeholder="Example: What are the key clauses I should review in a supplier agreement for the DACH region?"
-              />
-            </div>
+              <div className="mb-4">
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Your Question *
+                </label>
+                <textarea
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  className={`w-full p-4 border rounded-lg ${isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'border-slate-300 placeholder-slate-400'}`}
+                  rows={6}
+                  placeholder="Example: What are the key clauses I should review in a supplier agreement for the DACH region?"
+                />
+              </div>
 
-            <div className="flex items-center justify-between">
-              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Typical response time: 1-2 business days
-              </p>
-              <button
-                onClick={submitQuestion}
-                disabled={!question.trim() || submitting}
-                className="px-6 py-2 bg-tesa-blue text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <Loader size={18} className="animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Send size={18} />
-                    Submit Question
-                  </>
-                )}
-              </button>
+              <div className="flex items-center justify-between">
+                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Typical response time: 1-2 business days
+                </p>
+                <button
+                  onClick={submitQuestion}
+                  disabled={!question.trim() || submitting}
+                  className="px-6 py-2 bg-tesa-blue text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader size={18} className="animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={18} />
+                      Submit Question
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
       {tab === 'requests' && (
         <div className={`${isDark ? "bg-slate-800/50 border-slate-700 backdrop-blur-sm" : "bg-white"} rounded-lg border p-6`}>
-          <p className="text-slate-500">Your intake requests will appear here</p>
+          {loadingQuestions ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader className="animate-spin text-tesa-blue" size={40} />
+            </div>
+          ) : questions.length === 0 ? (
+            <div className="text-center py-12">
+              <MessageSquare size={48} className={`mx-auto mb-4 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+              <p className={`${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                No questions submitted yet. Use the "Ask Helpdesk" tab to submit your first question.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <h2 className={`text-xl font-semibold ${isDark ? "text-white" : "text-slate-900"} mb-4`}>
+                My Questions
+              </h2>
+              {questions.map((q) => (
+                <div
+                  key={q.id}
+                  className={`${isDark ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'} border rounded-lg p-6`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(q.status)}`}>
+                          {formatStatus(q.status)}
+                        </span>
+                        <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'} flex items-center gap-1`}>
+                          <Clock size={14} />
+                          {new Date(q.createdAt).toLocaleDateString()} at {new Date(q.createdAt).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <p className={`${isDark ? 'text-white' : 'text-slate-900'} font-medium mb-2`}>
+                        Question:
+                      </p>
+                      <p className={`${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {q.question}
+                      </p>
+                    </div>
+                  </div>
+
+                  {q.response && (
+                    <div className={`mt-4 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                      <p className={`${isDark ? 'text-white' : 'text-slate-900'} font-medium mb-2`}>
+                        Response:
+                      </p>
+                      <p className={`${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {q.response}
+                      </p>
+                      {q.respondedAt && (
+                        <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'} mt-2`}>
+                          Responded on {new Date(q.respondedAt).toLocaleDateString()} at {new Date(q.respondedAt).toLocaleTimeString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
