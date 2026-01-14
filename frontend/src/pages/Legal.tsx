@@ -186,7 +186,7 @@ export function Legal() {
             Legal AI Chat
           </div>
         </button>
-        <button
+        {/* <button
           onClick={() => setActiveTab('search')}
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             activeTab === 'search'
@@ -224,7 +224,7 @@ export function Legal() {
             <Book size={16} />
             Information
           </div>
-        </button>
+        </button> */}
       </div>
 
       {activeTab === 'chat' && (

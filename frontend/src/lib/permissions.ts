@@ -357,6 +357,7 @@ export function createPermissionCheckerFromKeys(permissionKeys: string[]): Permi
     admin: appRoutes.admin,
     settings: appRoutes.settings,
     help: appRoutes.help,
+    legal: appRoutes.legal,
   };
 
   // Get all route paths that the user has access to

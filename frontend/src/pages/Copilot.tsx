@@ -69,11 +69,11 @@ export function Copilot() {
 
 
   const tools = [
-    { id: 'summarize', label: t.legalai.tools.summarize, icon: FileText },
-    { id: 'extract', label: t.legalai.tools.extract, icon: FileSearch },
-    { id: 'compare', label: t.legalai.tools.compare, icon: GitCompare },
-    { id: 'risk', label: t.legalai.tools.risk, icon: AlertTriangle },
-    { id: 'compose', label: t.legalai.tools.compose, icon: FileEdit },
+    // { id: 'summarize', label: t.legalai.tools.summarize, icon: FileText },
+    // { id: 'extract', label: t.legalai.tools.extract, icon: FileSearch },
+    // { id: 'compare', label: t.legalai.tools.compare, icon: GitCompare },
+    // { id: 'risk', label: t.legalai.tools.risk, icon: AlertTriangle },
+    // { id: 'compose', label: t.legalai.tools.compose, icon: FileEdit },
   ];
 
   const availableDocs = mockData.sampleDocuments;
@@ -129,23 +129,23 @@ export function Copilot() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!currentConversationId && messages.length === 0) {
-      const seedMessage: Message = {
-        id: '1',
-        role: 'assistant',
-        content: "Here's a 5-bullet summary of the NDA:\n\n• Mutual confidentiality obligations between tesa SE and Acme GmbH\n• 3-year confidentiality period from disclosure date\n• Governed by German law, jurisdiction Berlin\n• Standard exceptions: public domain, independent development, required disclosure\n• No automatic renewal; expires on stated term",
-        citations: [
-          { number: 1, source: 'NDA_EN_2024_v3.docx § 2 (Obligations)' },
-          { number: 2, source: 'NDA_EN_2024_v3.docx § 5 (Term)' },
-          { number: 3, source: 'NDA_EN_2024_v3.docx § 8 (Governing Law)' },
-        ],
-        confidence: 0.82,
-        created_at: new Date().toISOString(),
-      };
-      setMessages([seedMessage]);
-    }
-  }, [currentConversationId, messages.length]);
+  // useEffect(() => {
+  //   if (!currentConversationId && messages.length === 0) {
+  //     const seedMessage: Message = {
+  //       id: '1',
+  //       role: 'assistant',
+  //       content: "Here's a 5-bullet summary of the NDA:\n\n• Mutual confidentiality obligations between tesa SE and Acme GmbH\n• 3-year confidentiality period from disclosure date\n• Governed by German law, jurisdiction Berlin\n• Standard exceptions: public domain, independent development, required disclosure\n• No automatic renewal; expires on stated term",
+  //       citations: [
+  //         { number: 1, source: 'NDA_EN_2024_v3.docx § 2 (Obligations)' },
+  //         { number: 2, source: 'NDA_EN_2024_v3.docx § 5 (Term)' },
+  //         { number: 3, source: 'NDA_EN_2024_v3.docx § 8 (Governing Law)' },
+  //       ],
+  //       confidence: 0.82,
+  //       created_at: new Date().toISOString(),
+  //     };
+  //     setMessages([seedMessage]);
+  //   }
+  // }, [currentConversationId, messages.length]);
 
   async function loadModels() {
     try {
@@ -437,7 +437,7 @@ export function Copilot() {
                 <p className={`text-sm ${c.text.secondary} mt-1`}>Jurisdiction-aware legal assistant</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <div className="relative">
                 <button
                   onClick={() => setShowModelPicker(!showModelPicker)}
@@ -504,7 +504,7 @@ export function Copilot() {
               <span className={`text-xs px-2 py-1 ${c.badge.info.bg} ${c.badge.info.text} rounded font-medium`}>
                 {jurisdictions.dach.code}
               </span>
-            </div>
+            </div> */}
           </div>
         </div>
 
