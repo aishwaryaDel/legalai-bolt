@@ -8,6 +8,9 @@ export class UserRepository {
   async findByEmail(email: string) {
     return User.findOne({ where: { email } });
   }
+  async findByAzureAdId(azureAdId: string) {
+    return User.findOne({ where: { azure_ad_id: azureAdId } });
+  }
   async create(userData: CreateUserDTO) {
     return User.create(userData as UserCreationAttributes);
   }

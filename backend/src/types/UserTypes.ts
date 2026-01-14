@@ -1,8 +1,11 @@
 export interface CreateUserDTO {
   email: string;
-  password: string;
+  password?: string;
   name: string;
   role: string;
+  azure_ad_id?: string;
+  department?: string;
+  is_sso_user?: boolean;
 }
 
 export interface UpdateUserDTO {
@@ -10,6 +13,9 @@ export interface UpdateUserDTO {
   password?: string;
   name?: string;
   role?: string;
+  azure_ad_id?: string;
+  department?: string;
+  is_sso_user?: boolean;
 }
 
 export interface UserAttributes {
@@ -18,6 +24,9 @@ export interface UserAttributes {
   password: string;
   name: string;
   role: string;
+  azure_ad_id?: string;
+  department?: string;
+  is_sso_user: boolean;
   created_at?: Date;
   updated_at?: Date;
 }

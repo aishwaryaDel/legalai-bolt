@@ -3,6 +3,7 @@ import { mockData } from '../lib/config';
 import { apiClient } from '../lib/apiClient';
 import { createPermissionChecker, createPermissionCheckerFromRole, createPermissionCheckerFromKeys, PermissionChecker } from '../lib/permissions';
 import type { User, UserRole } from '../types/api';
+import { azureAuthService } from '../lib/azureAuthService';
 
 interface AuthContextType {
   user: User | null;
@@ -10,6 +11,7 @@ interface AuthContextType {
   permissions: PermissionChecker | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithAzure: () => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   demoLogin: () => void;
@@ -165,18 +167,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithAzure = async () => {
+    try {
+      const azureResponse = await azureAuthService.loginPopup();
+      const accessToken = azureResponse.accessToken;
+
+      const response = await apiClient.auth.azureLogin(accessToken);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Azure AD login failed');
+      }
+
+      const { token, user: userData } = response.data;
+
+      localStorage.setItem(JWT_TOKEN_KEY, token);
+      apiClient.setToken(token);
+
+      setUser(userData);
+
+      if (userData.id) {
+        try {
+          const permResponse = await apiClient.users.getPermissions(userData.id);
+          if (permResponse.success && permResponse.data && permResponse.data.length > 0) {
+            const customPermissions = createPermissionCheckerFromKeys(permResponse.data);
+            setPermissions(customPermissions);
+            setUserRoles([]);
+            return;
+          }
+        } catch (permError) {
+          console.warn('Could not load custom permissions, using role-based:', permError);
+        }
+      }
+
+      if (userData.role) {
+        const rolePermissions = createPermissionCheckerFromRole(userData.role);
+        setPermissions(rolePermissions);
+        setUserRoles([]);
+      } else {
+        await fetchUserRoles(userData.id);
+      }
+    } catch (error) {
+      console.error('Azure AD sign in error:', error);
+      throw error;
+    }
+  };
+
   const signUp = async (_email: string, _password: string, _fullName: string) => {
     throw new Error('Registration not yet implemented');
   };
 
   const signOut = async () => {
     try {
-      // Call logout endpoint (optional)
+      if (azureAuthService.isAuthenticated()) {
+        await azureAuthService.logout();
+      }
       await apiClient.auth.logout();
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Clear local state regardless of API call result
       localStorage.removeItem(JWT_TOKEN_KEY);
       localStorage.removeItem(DEMO_USER_KEY);
       localStorage.removeItem(USER_ROLES_KEY);
@@ -203,7 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userRoles, permissions, loading, signIn, signUp, signOut, demoLogin, refreshRoles }}>
+    <AuthContext.Provider value={{ user, userRoles, permissions, loading, signIn, signInWithAzure, signUp, signOut, demoLogin, refreshRoles }}>
       {children}
     </AuthContext.Provider>
   );

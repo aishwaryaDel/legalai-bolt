@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { login, logout, getMe } from '../controllers/authController';
+import { login, logout, getMe, azureLogin } from '../controllers/authController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -10,6 +10,9 @@ const router = Router();
 
 // POST /api/auth/login - User login with email and password
 router.post('/login', login);
+
+// POST /api/auth/azure - User login with Azure AD SSO
+router.post('/azure', azureLogin);
 
 // POST /api/auth/logout - User logout (client-side token removal)
 router.post('/logout', logout);

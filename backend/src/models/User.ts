@@ -8,6 +8,9 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public password!: string;
   public name!: string;
   public role!: string;
+  public azure_ad_id?: string;
+  public department?: string;
+  public is_sso_user!: boolean;
   public created_at!: Date;
   public updated_at!: Date;
 }
@@ -26,7 +29,7 @@ User.init(
     },
     password: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     name: {
       type: DataTypes.STRING,
@@ -35,6 +38,20 @@ User.init(
     role: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    azure_ad_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
+    department: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    is_sso_user: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     created_at: {
       type: DataTypes.DATE,

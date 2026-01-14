@@ -38,18 +38,35 @@ export class UserService {
     }
   }
 
+  async getUserByAzureAdId(azureAdId: string): Promise<User | null> {
+    try {
+      const user = await userRepository.findByAzureAdId(azureAdId);
+      if (!user) {
+        return null;
+      }
+      return user as User;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async createUser(userData: CreateUserDTO): Promise<User> {
     try {
-      const { email, password, name, role } = userData;
-      
-      // Hash password before storing
-      const hashedPassword = await hashPassword(password);
-      
-      const user = await userRepository.create({ 
-        email, 
-        password: hashedPassword, 
-        name, 
-        role 
+      const { email, password, name, role, azure_ad_id, department, is_sso_user } = userData;
+
+      let hashedPassword: string | undefined;
+      if (password) {
+        hashedPassword = await hashPassword(password);
+      }
+
+      const user = await userRepository.create({
+        email,
+        password: hashedPassword,
+        name,
+        role,
+        azure_ad_id,
+        department,
+        is_sso_user: is_sso_user || false,
       });
       return user as User;
     } catch (error) {

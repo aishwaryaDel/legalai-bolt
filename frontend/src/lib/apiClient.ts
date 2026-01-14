@@ -186,6 +186,8 @@ class ApiClient {
   auth = {
     login: (email: string, password: string) =>
       this.post<{ token: string; user: User }>('/api/auth/login', { email, password }),
+    azureLogin: (accessToken: string) =>
+      this.post<{ token: string; user: User }>('/api/auth/azure', { accessToken }),
     logout: () => this.post<void>('/api/auth/logout'),
     getMe: () => this.get<User>('/api/auth/me'),
   };

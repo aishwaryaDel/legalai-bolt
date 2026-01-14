@@ -11,10 +11,10 @@ export function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { locale, setLocale, t } = useLocale();
-  const { signIn } = useAuth();
+  const { signIn, signInWithAzure } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const c = useColors(isDark);
-  const [mode, setMode] = useState<'sso' | 'emergency' | 'request'>('emergency'); // Login mode
+  const [mode, setMode] = useState<'sso' | 'emergency' | 'request'>('sso'); // Login mode
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showEmergency, setShowEmergency] = useState(false);
@@ -31,10 +31,15 @@ export function Auth() {
     setError('');
     setLoading(true);
 
-    // SSO not implemented yet - show message
-    setError('SSO authentication is not yet implemented. Please use email/password login.');
-    setLoading(false);
-    setMode('emergency');
+    try {
+      await signInWithAzure();
+      navigate(nextUrl);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Azure AD authentication failed';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleEmergencyLogin(e: React.FormEvent) {
