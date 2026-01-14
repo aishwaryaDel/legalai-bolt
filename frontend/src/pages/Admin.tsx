@@ -32,29 +32,30 @@ interface UserWithPermissions extends User {
 const availablePermissions = [
   { id: 'home', label: 'Home', route: appRoutes.home },
   { id: 'legalai', label: 'Legal AI', route: appRoutes.legalai },
-  { id: 'review', label: 'Review', route: appRoutes.review },
-  { id: 'draft', label: 'Draft', route: appRoutes.draft },
-  { id: 'builder', label: 'Builder', route: appRoutes.builder },
+  // { id: 'review', label: 'Review', route: appRoutes.review },
+  // { id: 'draft', label: 'Draft', route: appRoutes.draft },
+  // { id: 'builder', label: 'Builder', route: appRoutes.builder },
   { id: 'repository', label: 'Repository', route: appRoutes.repository },
   { id: 'intake', label: 'Intake', route: appRoutes.intake },
-  { id: 'search', label: 'Search', route: appRoutes.search },
-  { id: 'clauses', label: 'Clauses', route: appRoutes.clauses },
-  { id: 'playbooks', label: 'Playbooks', route: appRoutes.playbooks },
-  { id: 'workflows', label: 'Workflows', route: appRoutes.workflows },
-  { id: 'analytics', label: 'Analytics', route: appRoutes.analytics },
-  { id: 'partners', label: 'Partners', route: appRoutes.partners },
-  { id: 'discovery', label: 'Discovery', route: appRoutes.discovery },
-  { id: 'research', label: 'Research', route: appRoutes.research },
+  // { id: 'search', label: 'Search', route: appRoutes.search },
+  // { id: 'clauses', label: 'Clauses', route: appRoutes.clauses },
+  // { id: 'playbooks', label: 'Playbooks', route: appRoutes.playbooks },
+  // { id: 'workflows', label: 'Workflows', route: appRoutes.workflows },
+  // { id: 'analytics', label: 'Analytics', route: appRoutes.analytics },
+  // { id: 'partners', label: 'Partners', route: appRoutes.partners },
+  // { id: 'discovery', label: 'Discovery', route: appRoutes.discovery },
+  // { id: 'research', label: 'Research', route: appRoutes.research },
   { id: 'admin', label: 'Admin', route: appRoutes.admin },
   { id: 'settings', label: 'Settings', route: appRoutes.settings },
   { id: 'help', label: 'Help', route: appRoutes.help },
+  { id: 'legal', label: 'Legal', route: appRoutes.legal },
 ];
 
 export function Admin() {
   const { isDark } = useTheme();
   const { user } = useAuth();
   const c = useColors(isDark);
-  const [tab, setTab] = useState('audit');
+  const [tab, setTab] = useState('roles');
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [users, setUsers] = useState<UserWithPermissions[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,12 +70,12 @@ export function Admin() {
   const [newUserPermissions, setNewUserPermissions] = useState<string[]>([]);
 
   const tabs = [
-    { id: 'audit', label: 'Audit Logs', icon: Activity },
-    { id: 'hallucination', label: 'AI Quality Control', icon: AlertTriangle },
+    // { id: 'audit', label: 'Audit Logs', icon: Activity },
+    // { id: 'hallucination', label: 'AI Quality Control', icon: AlertTriangle },
     { id: 'roles', label: 'Roles & Permissions', icon: Users },
-    { id: 'models', label: 'Models', icon: Database },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'cost', label: 'Cost', icon: DollarSign },
+    // { id: 'models', label: 'Models', icon: Database },
+    // { id: 'security', label: 'Security', icon: Shield },
+    // { id: 'cost', label: 'Cost', icon: DollarSign },
   ];
 
   useEffect(() => {

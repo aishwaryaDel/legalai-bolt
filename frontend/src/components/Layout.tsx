@@ -31,19 +31,19 @@ export function Layout({ children }: LayoutProps) {
   const allNavItems = [
     { path: appRoutes.home, icon: Home, label: t.nav.home },
     { path: appRoutes.legalai, icon: MessageSquare, label: t.nav.copilot },
-    { path: appRoutes.review, icon: FileText, label: t.nav.review },
-    { path: appRoutes.draft, icon: FileEdit, label: t.nav.draft },
-    { path: appRoutes.builder, icon: Blocks, label: t.nav.builder },
+    // { path: appRoutes.review, icon: FileText, label: t.nav.review },
+    // { path: appRoutes.draft, icon: FileEdit, label: t.nav.draft },
+    // { path: appRoutes.builder, icon: Blocks, label: t.nav.builder },
     { path: appRoutes.repository, icon: Database, label: t.nav.repository },
     { path: appRoutes.intake, icon: Inbox, label: t.nav.intake },
-    { path: appRoutes.search, icon: Search, label: t.nav.search },
-    { path: appRoutes.clauses, icon: FileSignature, label: t.nav.clauses },
-    { path: appRoutes.playbooks, icon: BookOpen, label: t.nav.playbooks },
-    { path: appRoutes.workflows, icon: GitBranch, label: t.nav.workflows },
-    { path: appRoutes.analytics, icon: BarChart3, label: t.nav.analytics },
-    { path: appRoutes.partners, icon: Users, label: t.nav.partners },
-    { path: appRoutes.discovery, icon: FolderSearch, label: t.nav.discovery },
-    { path: appRoutes.research, icon: BookMarked, label: t.nav.research },
+    // { path: appRoutes.search, icon: Search, label: t.nav.search },
+    // { path: appRoutes.clauses, icon: FileSignature, label: t.nav.clauses },
+    // { path: appRoutes.playbooks, icon: BookOpen, label: t.nav.playbooks },
+    // { path: appRoutes.workflows, icon: GitBranch, label: t.nav.workflows },
+    // { path: appRoutes.analytics, icon: BarChart3, label: t.nav.analytics },
+    // { path: appRoutes.partners, icon: Users, label: t.nav.partners },
+    // { path: appRoutes.discovery, icon: FolderSearch, label: t.nav.discovery },
+    // { path: appRoutes.research, icon: BookMarked, label: t.nav.research },
     { path: appRoutes.admin, icon: Settings, label: t.nav.admin },
   ];
 
@@ -93,10 +93,10 @@ export function Layout({ children }: LayoutProps) {
               <span className={`text-sm font-medium uppercase ${c.text.primary}`}>{locale}</span>
             </button>
 
-            <button className={`p-2 ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'} rounded-lg transition-colors relative`}>
+            {/* <button className={`p-2 ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'} rounded-lg transition-colors relative`}>
               <Bell size={18} className={c.text.primary} />
               <span className="absolute top-1 right-1 w-2 h-2 bg-[#E30613] rounded-full"></span>
-            </button>
+            </button> */}
 
             <div className="relative">
               <button
